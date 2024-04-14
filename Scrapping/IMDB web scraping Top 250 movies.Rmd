@@ -245,6 +245,6 @@ print(movies_df_final)
 
 Excel
 ```{r}
-write.csv(movies_df_final, file = "movies_data.csv", row.names = FALSE)
+write.csv(movies_df_final, file = "movies_data_top250.csv", row.names = FALSE)
 ```
 
