@@ -1,0 +1,30 @@
+---
+title: "fjfj"
+author: "Sofia Villamil"
+date: "2024-05-31"
+output: html_document
+---
+```{r}
+library(readr)
+
+library(dplyr)
+
+movies <- read_delim("Scrapping/TMDB_movie_dataset_v11_1mill.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE)
+View(TMDB_movie_dataset_v11_1mill)
+
+movies <-TMDB_movie_dataset_v11_1mill
+
+movies <- movies %>%
+  mutate(release_year = as.numeric(format(as.Date(release_date, format = "%Y-%m-%d"), "%Y")))
+
+# Filter the dataset to include only movies with year > 2010
+filtered_movies <- movies %>%
+  filter(release_year > 2010)
+
+# Save the filtered dataset to a CSV file
+write.csv(filtered_movies, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/TMDB_movie_dataset_v11_1mill_filter.csv", row.names = FALSE)
+
+
+```
+

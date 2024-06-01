@@ -15,7 +15,7 @@ rm(list = ls())
 library(rvest)
 library(dplyr)
 library(readr)
-library(future.apply)
+library(future.apply) # parallel processing
 
 ```
 
@@ -104,13 +104,13 @@ scrape_imdb <- function(imdb_id, index) {
   )
 }
  
-# 1 million movie data set from keggel
-movies <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/TMDB_movie_dataset_v11_1mill.csv", 
+# 1 million movie data set from keggel that is already filtered 
+movies <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/TMDB_movie_dataset_v11_1mill_filter.csv", 
     delim = ";", escape_double = FALSE, col_types = cols(release_date = col_date(format = "%d/%m/%Y")), 
     trim_ws = TRUE)
 
 # Select the amount of movies to scrap
-test_movies <- head(movies, 58000) 
+test_movies <- head(movies, 55000) 
 
 # Initialize an empty data frame to store results to make less errors
 scraped_data <- data.frame()
@@ -126,8 +126,15 @@ scraped_data_list <- future_lapply(seq_len(nrow(test_movies)), function(i) {
 # Combine the results into a single data frame of all the data attained
 scraped_data <- bind_rows(scraped_data_list)
 
+# suffix to be added to each column name for reference
+suffix <- "_imdb"
+
+# Appending the suffix, except the first column
+scraped_data <- scraped_data %>%
+  rename_with(~ paste0(., suffix), -1)
+
 # Merge the scraped data with your existing test dataset
-final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
+final_data <- left_join(test_movies, scraped_data1, by = "imdb_id")
 
 # Save the final merged dataset
 write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/movies_final_dataset_test.csv", row.names = FALSE)

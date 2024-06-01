@@ -1,0 +1,20 @@
+---
+title: "Data cleaning"
+author: "Sofia Villamil"
+date: "2024-06-01"
+output: html_document
+---
+```{r}
+library(readr)
+```
+
+```{r}
+data <- read_csv("Scrapping/movies_final_dataset_test.csv", 
+    col_types = cols(release_date = col_character(), 
+        MPAA_imdb = col_character()))
+```
+
+```{r}
+summary(data)
+```
+
