@@ -1,0 +1,267 @@
+---
+title: "Script Rotten Tomatoes variables"
+author: "Sofia Villamil"
+date: "2024-06-01"
+output: html_document
+---
+
+```{r}
+rm(list = ls())
+```
+
+```{r}
+library(rvest)
+library(httr)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(future.apply) # parallel processing
+```
+
+```{r}
+data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/movies_final_dataset_test.csv",show_col_types = FALSE)
+```
+
+URL function to take into account all the different possibilities in the links 
+
+```{r}
+# Helper function to safely extract single text elements
+extract_single_text <- function(node) {
+  if (length(node) == 0) {
+    return(NA)
+  } else {
+    return(html_text(node, trim = TRUE))
+  }
+}
+
+# Function to generate Rotten Tomatoes URL from movie title
+generate_movie_url <- function(movie_title, release_year = NULL, known_variation = NULL) {
+  if (!is.null(known_variation)) {
+    # Use known variation if provided
+    formatted_title <- known_variation
+  } else {
+    # Replace & with 'and'
+    movie_title <- gsub("&", "and", movie_title)
+    # Remove $ and ' symbols
+    movie_title <- gsub("[\\$']", "", movie_title)
+    # Replace various symbols with underscores and convert to lowercase
+    formatted_title <- tolower(gsub("[ :.,!?\"-/]", "_", movie_title))
+    # Replace '...' with '_'
+    formatted_title <- gsub("\\.\\.\\.", "_", formatted_title)
+    # Remove any double underscores or trailing underscores
+    formatted_title <- gsub("__+", "_", formatted_title)
+    formatted_title <- gsub("_$", "", formatted_title)
+  }
+  # Generate the base URL
+  base_url <- paste0("https://www.rottentomatoes.com/m/", formatted_title)
+  
+  # Function to check if the URL is valid
+  is_url_valid <- function(url) {
+    tryCatch({
+      httr::HEAD(url)$status_code == 200
+    }, error = function(e) {
+      FALSE
+    })
+  }
+  
+  # If release year is provided, generate the URL with year as well
+  if (!is.null(release_year)) {
+    movie_url_with_year <- paste0(base_url, "_", release_year)
+    if (is_url_valid(movie_url_with_year)) {
+      return(movie_url_with_year)
+    }
+  }
+  
+  # If the base URL is valid, return it
+  if (is_url_valid(base_url)) {
+    return(base_url)
+  }
+  
+  # If no valid URL is found, generate URLs for multiple years and select the most recent valid one
+  years <- 2010:2024  # Example range, adjust as needed
+  possible_urls <- paste0(base_url, "_", years)
+  valid_urls <- possible_urls[sapply(possible_urls, is_url_valid)]
+  
+  if (length(valid_urls) > 0) {
+    return(tail(valid_urls, 1))  # Return the most recent valid URL
+  }
+  
+  return(NA)  # Return NA if no valid URL is found
+}
+
+```
+
+Scrapping function
+
+```{r}
+# Function to scrape Rotten Tomatoes data
+scrape_rotten_tomatoes <- function(title, release_year = NULL, known_variation = NULL) {
+  cat(sprintf("Scraping Rotten data for movie title: %s\n", title))
+  
+  # Generate possible Rotten Tomatoes URLs
+  movie_urls <- generate_movie_url(title, release_year, known_variation)
+  
+  movie_page <- NULL
+  
+  # Try each generated URL
+  for (movie_url in movie_urls) {
+    cat(sprintf("Trying URL: %s\n", movie_url))
+    
+    movie_page <- tryCatch({
+      read_html(movie_url)
+    }, error = function(e) {
+      cat("Error in fetching movie page:", e$message, "\n")
+      return(NULL)
+    })
+    
+    if (!is.null(movie_page)) {
+      break
+    }
+  }
+  
+  if (is.null(movie_page)) {
+    return(data.frame(
+      title_rt = title,
+      critics_score_rt = NA,
+      total_critics_reviews_rt = NA,
+      audience_score_rt = NA,
+      total_audience_reviews_rt = NA,
+      top_critic_review_1_rt = NA,
+      top_critic_review_2_rt = NA,
+      audience_review_1_rt = NA,
+      audience_review_2_rt = NA
+    ))
+  }
+  
+  # Extract the required information with tryCatch to handle any errors during extraction
+  data_scrap <- tryCatch({
+    title_rt <- extract_single_text(movie_page %>% html_node(xpath = '//h1[@slot="titleIntro"]//span'))
+
+    # Critics Score RT
+    critics_score_rt <- movie_page %>%
+      html_node(xpath = '//rt-button[@slot="criticsScore"]//rt-text') %>%
+      html_text(trim = TRUE) %>%
+      gsub("%", "", .) %>%
+      as.numeric()
+
+    # Total Critics Reviews RT
+    total_critics_reviews_rt <- movie_page %>%
+      html_node(xpath = '//rt-link[@slot="criticsReviews" and @size="0.75"]') %>%
+      html_text(trim = TRUE) %>%
+      gsub("\\s+Reviews", "", .) %>%  
+      gsub(",", "", .) %>%            
+      as.numeric()
+
+    # Audience Score RT
+    audience_score_rt <- movie_page %>%
+      html_node(xpath = '//rt-button[@slot="audienceScore"]//rt-text') %>%
+      html_text(trim = TRUE) %>%
+      gsub("%", "", .) %>%
+      as.numeric()
+
+    # Total Audience Reviews RT
+    total_audience_reviews_rt <- movie_page %>%
+      html_node(xpath = '//rt-link[@slot="audienceReviews" and @size="0.75"]') %>%
+      html_text(trim = TRUE) %>%
+      gsub("[^0-9]", "", .) %>%
+      as.numeric()
+
+    # Top Critic Review 1
+    top_critic_review_1_rt <- extract_single_text(movie_page %>% html_node(xpath = '(//carousel-slider//review-card-critic[@slot="tile"])[1]//rt-text[@slot="content"]'))
+
+    # Top Critic Review 2
+    top_critic_review_2_rt <- extract_single_text(movie_page %>% html_node(xpath = '(//carousel-slider//review-card-critic[@slot="tile"])[2]//rt-text[@slot="content"]'))
+
+    # Audience Review 1
+    audience_review_1_rt <- extract_single_text(movie_page %>% html_node(xpath = '(//carousel-slider//review-card-audience[@slot="tile"])[1]//rt-text[@slot="content"]'))
+
+    # Audience Review 2
+    audience_review_2_rt <- extract_single_text(movie_page %>% html_node(xpath = '(//carousel-slider//review-card-audience[@slot="tile"])[2]//rt-text[@slot="content"]'))
+
+    data.frame(
+      title_rt = title_rt,
+      Title = title_rt,
+      critics_score_rt = critics_score_rt,
+      total_critics_reviews_rt = total_critics_reviews_rt,
+      audience_score_rt = audience_score_rt,
+      total_audience_reviews_rt = total_audience_reviews_rt,
+      top_critic_review_1_rt = top_critic_review_1_rt,
+      top_critic_review_2_rt = top_critic_review_2_rt,
+      audience_review_1_rt = audience_review_1_rt,
+      audience_review_2_rt = audience_review_2_rt,
+      stringsAsFactors = FALSE
+    )
+  }, error = function(e) {
+    cat("Error in extracting data:", e$message, "\n")
+    return(data.frame(
+      title_rt = title,
+      critics_score_rt = NA,
+      total_critics_reviews_rt = NA,
+      audience_score_rt = NA,
+      total_audience_reviews_rt = NA,
+      top_critic_review_1_rt = NA,
+      top_critic_review_2_rt = NA,
+      audience_review_1_rt = NA,
+      audience_review_2_rt = NA
+    ))
+  })
+  
+  return(data_scrap)
+}
+
+```
+
+
+```{r}
+# Known variations for specific movies
+known_variations <- list(
+  "The Avengers" = "marvels_the_avengers",
+  "Star Wars: The Force Awakens" = "star_wars_episode_vii_the_force_awakens",
+  "Once Upon a Time… in Hollywood" = "once_upon_a_time_in_hollywood",
+  "Birdman or (The Unexpected Virtue of Ignorance)" = "birdman_2014",
+  "Men in Black 3" ="men_in_black_iii",
+  "Kung Fu Panda 2" = "kung_fu_panda_the_kaboom_of_doom",
+  "Pokémon Detective Pikachu" ="pokemon_detective_pikachu",
+  "The Man from U.N.C.L.E." = "the_man_from_uncle",
+  "The 5th Wave"="the_fifth_wave",
+  "G.I. Joe: Retaliation" ="gi_joe_retaliation",
+  "Les Misérables" = "les_miserables",
+  "The Adjustment Bureau" ="adjustment_bureau",
+  "Gangster Squad"="gangster_squad_2012",
+  "R.I.P.D." = "ripd",
+  "A Silent Voice: The Movie" = "a_silent_voice",
+ "The Woman in Black" = "the_woman_in_black_2011",
+  "The Wolf of Wall Street" = "the_wolf_of_wall_street_2013"
+)
+
+# Create a reversion map to revert known variations to their original titles
+reversion_map <- c(
+  "Marvel's the Avengers" = "The Avengers")
+
+# Example dataset (using the head of the dataset for testing)
+test_movies <- head(data,1000)
+
+# Set up parallel processing
+plan(multisession, workers = 7)  # Adjust the number of workers based on your CPU
+
+# Scrape data for each movie in the dataset using parallel processing
+scraped_data_list <- future_lapply(seq_len(nrow(test_movies)), function(i) {
+  scrape_rotten_tomatoes(test_movies$title[i], test_movies$release_year[i], known_variations[[test_movies$title[i]]])
+})
+
+# Combine the results into a single data frame
+scraped_data <- bind_rows(scraped_data_list)
+
+# Revert known variations to their original titles
+scraped_data <- scraped_data %>%
+  mutate(title_rt = ifelse(title_rt %in% names(reversion_map), reversion_map[title_rt], title_rt))
+
+# Join the scraped data back to the original test_movies data
+final_data2 <- left_join(test_movies, scraped_data, by = c("title" = "title_rt"))
+```
+
+```{r}
+# Save the merged dataset
+write_csv(final_data2, "movies_test_dataset_with_rotten_tomatoes.csv")
+```
+
