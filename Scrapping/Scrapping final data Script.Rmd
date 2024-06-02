@@ -4,7 +4,9 @@ author: "Sofia Villamil"
 date: "2024-03-03"
 output: html_document
 ---
+
 IMDB SCRAPPING 
+
 ```{r}
 rm(list = ls())
 ```
@@ -115,7 +117,7 @@ test_movies <- head(movies, 55000)
 # Initialize an empty data frame to store results to make less errors
 scraped_data <- data.frame()
 
-# Use parallel processing for scraping becuase it takes to long so this will fasten the scrapping process
+# Use parallel processing for scraping because it takes to long so this will fasten the scrapping process
 plan(multisession, workers = 7) # Adjust the number of workers based on your CPU, I have 8 so I will use one less that the maximum
 
 # Scrape data for each movie in the test data set that we choose

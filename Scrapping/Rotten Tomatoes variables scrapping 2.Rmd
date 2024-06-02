@@ -37,7 +37,7 @@ extract_single_text <- function(node) {
 # Function to generate Rotten Tomatoes URL from movie title
 generate_movie_url <- function(movie_title, release_year = NULL, known_variation = NULL) {
   if (!is.null(known_variation)) {
-    # Use known variation if provided
+    # known variation used to account for differences
     formatted_title <- known_variation
   } else {
     # Replace & with 'and'
@@ -54,8 +54,7 @@ generate_movie_url <- function(movie_title, release_year = NULL, known_variation
   }
   # Generate the base URL
   base_url <- paste0("https://www.rottentomatoes.com/m/", formatted_title)
-  
-  # Function to check if the URL is valid
+  # Function to check if the URL is valid so I can adjust the code
   is_url_valid <- function(url) {
     tryCatch({
       httr::HEAD(url)$status_code == 200
@@ -64,7 +63,7 @@ generate_movie_url <- function(movie_title, release_year = NULL, known_variation
     })
   }
   
-  # If release year is provided, generate the URL with year as well
+  # If release year is provided, generate the URL with year as well as this is an important variation
   if (!is.null(release_year)) {
     movie_url_with_year <- paste0(base_url, "_", release_year)
     if (is_url_valid(movie_url_with_year)) {
@@ -77,16 +76,16 @@ generate_movie_url <- function(movie_title, release_year = NULL, known_variation
     return(base_url)
   }
   
-  # If no valid URL is found, generate URLs for multiple years and select the most recent valid one
-  years <- 2010:2024  # Example range, adjust as needed
+  # If no valid URL is found, generate URLs for multiple years and select the most recent one
+  years <- 2010:2024
   possible_urls <- paste0(base_url, "_", years)
   valid_urls <- possible_urls[sapply(possible_urls, is_url_valid)]
   
   if (length(valid_urls) > 0) {
-    return(tail(valid_urls, 1))  # Return the most recent valid URL
+    return(tail(valid_urls, 1))
   }
   
-  return(NA)  # Return NA if no valid URL is found
+  return(NA)
 }
 
 ```
@@ -94,17 +93,14 @@ generate_movie_url <- function(movie_title, release_year = NULL, known_variation
 Scrapping function
 
 ```{r}
-# Function to scrape Rotten Tomatoes data
 scrape_rotten_tomatoes <- function(title, release_year = NULL, known_variation = NULL) {
   cat(sprintf("Scraping Rotten data for movie title: %s\n", title))
   
-  # Generate possible Rotten Tomatoes URLs
   movie_urls <- generate_movie_url(title, release_year, known_variation)
   
   movie_page <- NULL
   
-  # Try each generated URL
-  for (movie_url in movie_urls) {
+    for (movie_url in movie_urls) {
     cat(sprintf("Trying URL: %s\n", movie_url))
     
     movie_page <- tryCatch({
@@ -133,18 +129,18 @@ scrape_rotten_tomatoes <- function(title, release_year = NULL, known_variation =
     ))
   }
   
-# Extract the required information with tryCatch to handle any errors during extraction
+# Extract the required information with tryCatch so I can observe any errors if they appear
     data_scrap <- tryCatch({
      title_rt <- extract_single_text(movie_page %>% html_node(xpath = '//h1[@slot="titleIntro"]//span'))
 
-    # Critics Score RT
+    # Critics Score 
     critics_score_rt <- movie_page %>%
       html_node(xpath = '//rt-button[@slot="criticsScore"]//rt-text') %>%
       html_text(trim = TRUE) %>%
       gsub("%", "", .) %>%
       as.numeric()
 
-    # Total Critics Reviews RT
+    # Total Critics Reviews 
     total_critics_reviews_rt <- movie_page %>%
       html_node(xpath = '//rt-link[@slot="criticsReviews" and @size="0.75"]') %>%
       html_text(trim = TRUE) %>%
@@ -152,14 +148,14 @@ scrape_rotten_tomatoes <- function(title, release_year = NULL, known_variation =
       gsub(",", "", .) %>%            
       as.numeric()
 
-    # Audience Score RT
+    # Audience Score 
     audience_score_rt <- movie_page %>%
       html_node(xpath = '//rt-button[@slot="audienceScore"]//rt-text') %>%
       html_text(trim = TRUE) %>%
       gsub("%", "", .) %>%
       as.numeric()
 
-    # Total Audience Reviews RT
+    # Total Audience Reviews 
     total_audience_reviews_rt <- movie_page %>%
       html_node(xpath = '//rt-link[@slot="audienceReviews" and @size="0.75"]') %>%
       html_text(trim = TRUE) %>%
@@ -238,22 +234,22 @@ known_variations <- list(
   "The Wolf of Wall Street" = "the_wolf_of_wall_street_2013"
 )
 
-# Create a reversion map to revert known variations to their original titles
+# Create a reversion map to revert known variations to their original titles 
 reversion_map <- c(
   "Marvel's the Avengers" = "The Avengers")
 
-# Example dataset (using the head of the dataset for testing)
+# Example data set to try small number of movies then change to the data
 test_movies <- head(data,1000)
 
 # Set up parallel processing
-plan(multisession, workers = 7)  # Adjust the number of workers based on your CPU
+plan(multisession, workers = 7)  #Ajusted the number to 7 as I have 8 CPU's
 
-# Scrape data for each movie in the dataset using parallel processing
+# Scrape data for each movie in the data set using parallel processing
 scraped_data_list <- future_lapply(seq_len(nrow(test_movies)), function(i) {
   scrape_rotten_tomatoes(test_movies$title[i], test_movies$release_year[i], known_variations[[test_movies$title[i]]])
 })
 
-# Combine the results into a single data frame
+# Combining the results into a single data frame
 scraped_data <- bind_rows(scraped_data_list)
 
 # Revert known variations to their original titles
@@ -265,7 +261,7 @@ final_data2 <- left_join(test_movies, scraped_data, by = c("title" = "title_rt")
 ```
 
 ```{r}
-# Save the merged dataset
+# Save merged dataset
 write_csv(final_data2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes.csv")
 ```
 

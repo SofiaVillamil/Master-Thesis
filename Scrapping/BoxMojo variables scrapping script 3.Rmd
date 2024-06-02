@@ -1,10 +1,17 @@
 ---
-title: "Scrapping for mojo"
+title: "Scrapping for BoxMojo"
 author: "Sofia Villamil"
 date: "2024-06-02"
 output: html_document
 ---
+
 BOX MOJO SCRAPPING
+
+```{r}
+rm(list = ls())
+```
+
+
 ```{r}
 library(rvest)
 library(dplyr)
@@ -12,7 +19,7 @@ library(readr)
 library(future.apply) # parallel processing
 
 ```
-
+Scrapping Function
 ```{r}
 scrape_boxofficemojo <- function(imdb_id, index) {
   cat(sprintf("Scraping Box Office Mojo data for ID: %s (Observation %d)\n", imdb_id, index))
@@ -33,27 +40,67 @@ scrape_boxofficemojo <- function(imdb_id, index) {
   }
   
   # Title
-  title <- extract_single_text(movie_page %>% html_node('h1.a-size-extra-large'))
+  title_node <- movie_page %>% html_node(xpath = '//h1[contains(@class, "a-size-extra-large")]')
+  title <- title_node %>% html_text() %>% trimws() %>% sub("\\s*\\(.*?\\)$", "", .)
   
+  # Domestic Distributor
+  domestic_distributor <- movie_page %>% 
+    html_node(xpath = '//div[span[text()="Domestic Distributor"]]/span[2]') %>%
+    extract_single_text()
+  
+  # Budget
+  budget <- movie_page %>% 
+    html_node(xpath = '//div[span[text()="Budget"]]/span[2]/span') %>%
+    extract_single_text()
+  
+  # Domestic Opening
+  domestic_opening <- movie_page %>% 
+    html_node(xpath = '//div[span[text()="Domestic Opening"]]/span[2]/a/span') %>%
+    extract_single_text()
 
+ # Domestic Gross
+  domestic_gross <- movie_page %>% 
+    html_node(xpath = '//div[span[contains(text(), "Domestic")]]/span[contains(@class, "a-size-medium")]/span[contains(@class, "money")]') %>%
+    extract_single_text()
+  
+  # International Gross
+  international_gross <- movie_page %>% 
+    html_node(xpath = '//div[span[contains(text(), "International")]]/span[contains(@class, "a-size-medium")]/span[contains(@class, "money")]') %>%
+    extract_single_text()
 
+  # Worldwide Gross
+  worldwide_gross <- movie_page %>% 
+    html_node(xpath = '//div[span[contains(text(), "Worldwide")]]/span[contains(@class, "a-size-medium")]/span[contains(@class, "money")]') %>%
+    extract_single_text()
+
+  # Number of Markets Released
+  number_of_markets <- movie_page %>%
+    html_node(xpath = '//tr[contains(@class, "mojo-revenue-source-theatrical")]//td[3]/a') %>%
+    extract_single_text()
+  number_of_markets <- sub(" markets$", "", number_of_markets)  
+  
   data.frame(
-    imdb_id = imdb_id, Title = title,
+    imdb_id = imdb_id, Title = title, 
+    DomesticDistributor = domestic_distributor, Budget = budget,
+    DomesticOpening = domestic_opening, DomesticGross = domestic_gross,
+    InternationalGross = international_gross, WorldwideGross = worldwide_gross,
+    NumberOfMarkets = number_of_markets,
     stringsAsFactors = FALSE
   )
 }
- 
-# Load dataset (assumes you have the same CSV as in your example)
-movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test.csv")
+```
 
-# Select the amount of movies to scrape
-test_movies <- head(movies, 4) 
+```{r}
+# Load data
+movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes.csv",show_col_types = FALSE)
 
-# Initialize an empty data frame to store results to make fewer errors
+# Example data set to try small number of movies then change to the data
+test_movies <- head(movies, 40) 
+
 scraped_data <- data.frame()
 
 # Use parallel processing for scraping
-plan(multisession, workers = 7) # Adjust the number of workers based on your CPU
+plan(multisession, workers = 7) # Adjust the number of workers based on your CPU, I have 8 so I put one less
 
 # Scrape data for each movie in the test data set
 scraped_data_list <- future_lapply(seq_len(nrow(test_movies)), function(i) {
@@ -63,18 +110,20 @@ scraped_data_list <- future_lapply(seq_len(nrow(test_movies)), function(i) {
 # Combine the results into a single data frame
 scraped_data <- bind_rows(scraped_data_list)
 
-# Suffix to be added to each column name for reference
+# Suffix to be added to each column name for reference as i have many variables from dif places
 suffix <- "_bm"
 
-# Appending the suffix, except the first column
+# Appending the suffix, except the first column for organization
 scraped_data <- scraped_data %>%
   rename_with(~ paste0(., suffix), -1)
 
-# Merge the scraped data with your existing test dataset
+```
+
+```{r}
+# Merge
 final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
 
-# Save the final merged dataset
+# Saving data set
 write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test_with_bm.csv", row.names = FALSE)
-
 ```
 
