@@ -19,7 +19,7 @@ library(future.apply) # parallel processing
 ```
 
 ```{r}
-data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/movies_final_dataset_test.csv",show_col_types = FALSE)
+data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test.csv",show_col_types = FALSE)
 ```
 
 URL function to take into account all the different possibilities in the links 
@@ -266,6 +266,6 @@ final_data2 <- left_join(test_movies, scraped_data, by = c("title" = "title_rt")
 
 ```{r}
 # Save the merged dataset
-write_csv(final_data2, "movies_test_dataset_with_rotten_tomatoes.csv")
+write_csv(final_data2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes.csv")
 ```
 

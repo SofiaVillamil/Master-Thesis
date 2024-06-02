@@ -1,0 +1,80 @@
+---
+title: "Scrapping for mojo"
+author: "Sofia Villamil"
+date: "2024-06-02"
+output: html_document
+---
+BOX MOJO SCRAPPING
+```{r}
+library(rvest)
+library(dplyr)
+library(readr)
+library(future.apply) # parallel processing
+
+```
+
+```{r}
+scrape_boxofficemojo <- function(imdb_id, index) {
+  cat(sprintf("Scraping Box Office Mojo data for ID: %s (Observation %d)\n", imdb_id, index))
+  
+  url <- paste0("https://www.boxofficemojo.com/title/", imdb_id)
+  movie_page <- tryCatch({
+    read_html(url)
+  }, error = function(e) {
+    cat("Error in fetching URL:", url, "\n")
+    return(NULL)
+  })
+  
+  if (is.null(movie_page)) return(NULL)
+  
+  extract_single_text <- function(node) {
+    text <- html_text(node, trim = TRUE)
+    if (length(text) > 0) text else NA
+  }
+  
+  # Title
+  title <- extract_single_text(movie_page %>% html_node('h1.a-size-extra-large'))
+  
+
+
+  data.frame(
+    imdb_id = imdb_id, Title = title,
+    stringsAsFactors = FALSE
+  )
+}
+ 
+# Load dataset (assumes you have the same CSV as in your example)
+movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test.csv")
+
+# Select the amount of movies to scrape
+test_movies <- head(movies, 4) 
+
+# Initialize an empty data frame to store results to make fewer errors
+scraped_data <- data.frame()
+
+# Use parallel processing for scraping
+plan(multisession, workers = 7) # Adjust the number of workers based on your CPU
+
+# Scrape data for each movie in the test data set
+scraped_data_list <- future_lapply(seq_len(nrow(test_movies)), function(i) {
+  scrape_boxofficemojo(test_movies$imdb_id[i], i)
+})
+
+# Combine the results into a single data frame
+scraped_data <- bind_rows(scraped_data_list)
+
+# Suffix to be added to each column name for reference
+suffix <- "_bm"
+
+# Appending the suffix, except the first column
+scraped_data <- scraped_data %>%
+  rename_with(~ paste0(., suffix), -1)
+
+# Merge the scraped data with your existing test dataset
+final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
+
+# Save the final merged dataset
+write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test_with_bm.csv", row.names = FALSE)
+
+```
+

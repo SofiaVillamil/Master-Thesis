@@ -4,7 +4,7 @@ author: "Sofia Villamil"
 date: "2024-03-03"
 output: html_document
 ---
-
+IMDB SCRAPPING 
 ```{r}
 rm(list = ls())
 ```
