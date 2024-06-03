@@ -110,8 +110,13 @@ scrape_imdb <- function(imdb_id, index) {
 movies <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/TMDB_movie_dataset_v11_1mill_filter.csv", 
     delim = ";", escape_double = FALSE, col_types = cols(release_date = col_date(format = "%d/%m/%Y")), 
     trim_ws = TRUE)
+ 
+movies <- movies %>%
+  group_by(title) %>%
+  filter(release_year == min(release_year)) %>%
+  ungroup()
 
-# Select the amount of movies to scrap
+# Select the amount of movies to scrap in 8 hours
 test_movies <- head(movies, 55000) 
 
 # Initialize an empty data frame to store results to make less errors
@@ -136,9 +141,9 @@ scraped_data <- scraped_data %>%
   rename_with(~ paste0(., suffix), -1)
 
 # Merge the scraped data with your existing test dataset
-final_data <- left_join(test_movies, scraped_data1, by = "imdb_id")
+final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
 
 # Save the final merged dataset
-write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/movies_final_dataset_test.csv", row.names = FALSE)
+write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test.csv", row.names = FALSE)
 
 ```

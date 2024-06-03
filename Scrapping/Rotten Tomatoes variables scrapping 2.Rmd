@@ -231,7 +231,8 @@ known_variations <- list(
   "R.I.P.D." = "ripd",
   "A Silent Voice: The Movie" = "a_silent_voice",
  "The Woman in Black" = "the_woman_in_black_2011",
-  "The Wolf of Wall Street" = "the_wolf_of_wall_street_2013"
+  "The Wolf of Wall Street" = "the_wolf_of_wall_street_2013",
+"The SpongeBob Movie: Sponge Out of Water" = "the_spongebob_movie_sponge_out_of_water"
 )
 
 # Create a reversion map to revert known variations to their original titles 
@@ -239,7 +240,7 @@ reversion_map <- c(
   "Marvel's the Avengers" = "The Avengers")
 
 # Example data set to try small number of movies then change to the data
-test_movies <- head(data,1000)
+test_movies <- data
 
 # Set up parallel processing
 plan(multisession, workers = 7)  #Ajusted the number to 7 as I have 8 CPU's
@@ -264,4 +265,5 @@ final_data2 <- left_join(test_movies, scraped_data, by = c("title" = "title_rt")
 # Save merged dataset
 write_csv(final_data2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes.csv")
 ```
+
 

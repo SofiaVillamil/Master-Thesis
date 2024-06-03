@@ -95,7 +95,7 @@ scrape_boxofficemojo <- function(imdb_id, index) {
 movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes.csv",show_col_types = FALSE)
 
 # Example data set to try small number of movies then change to the data
-test_movies <- head(movies, 40) 
+test_movies <- movies 
 
 scraped_data <- data.frame()
 
