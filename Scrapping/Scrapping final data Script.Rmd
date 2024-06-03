@@ -107,13 +107,11 @@ scrape_imdb <- function(imdb_id, index) {
 }
  
 # 1 million movie data set from keggel that is already filtered 
-movies <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/TMDB_movie_dataset_v11_1mill_filter.csv", 
-    delim = ";", escape_double = FALSE, col_types = cols(release_date = col_date(format = "%d/%m/%Y")), 
-    trim_ws = TRUE)
+movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/TMDB_movie_dataset_v11_1mill_filter.csv", show_col_types = FALSE)
  
 movies <- movies %>%
   group_by(title) %>%
-  filter(release_year == min(release_year)) %>%
+  filter(year == min(year)) %>%
   ungroup()
 
 # Select the amount of movies to scrap in 8 hours

@@ -11,15 +11,17 @@ BOX MOJO SCRAPPING
 rm(list = ls())
 ```
 
+#### Libraries
 
 ```{r}
 library(rvest)
 library(dplyr)
 library(readr)
 library(future.apply) # parallel processing
-
 ```
-Scrapping Function
+
+### Scrapping function
+
 ```{r}
 scrape_boxofficemojo <- function(imdb_id, index) {
   cat(sprintf("Scraping Box Office Mojo data for ID: %s (Observation %d)\n", imdb_id, index))
@@ -126,4 +128,3 @@ final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
 # Saving data set
 write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test_with_bm.csv", row.names = FALSE)
 ```
-

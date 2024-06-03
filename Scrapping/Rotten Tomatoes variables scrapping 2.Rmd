@@ -5,9 +5,13 @@ date: "2024-06-01"
 output: html_document
 ---
 
+ROTTEN TOMATOES SCRIPT
+
 ```{r}
 rm(list = ls())
 ```
+
+### Libraries
 
 ```{r}
 library(rvest)
@@ -22,7 +26,7 @@ library(future.apply) # parallel processing
 data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test.csv",show_col_types = FALSE)
 ```
 
-URL function to take into account all the different possibilities in the links 
+### URL function to take into account all the different possibilities in the links
 
 ```{r}
 # Helper function to safely extract single text elements
@@ -90,7 +94,7 @@ generate_movie_url <- function(movie_title, release_year = NULL, known_variation
 
 ```
 
-Scrapping function
+### Scrapping function
 
 ```{r}
 scrape_rotten_tomatoes <- function(title, release_year = NULL, known_variation = NULL) {
@@ -211,7 +215,6 @@ scrape_rotten_tomatoes <- function(title, release_year = NULL, known_variation =
 
 ```
 
-
 ```{r}
 # Known variations for specific movies
 known_variations <- list(
@@ -265,5 +268,3 @@ final_data2 <- left_join(test_movies, scraped_data, by = c("title" = "title_rt")
 # Save merged dataset
 write_csv(final_data2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes.csv")
 ```
-
-
