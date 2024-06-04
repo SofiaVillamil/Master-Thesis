@@ -122,7 +122,7 @@ suffix <- "_bm"
  
 # Appending the suffix, except the first column for organization
 scraped_data <- scraped_data %>%
-  rename_with(~ paste0(., suffix), -1)
+  rename_with(~ paste0(., suffix), -1) 
 
 ```
 
@@ -132,4 +132,24 @@ final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
 
 # Saving data set
 write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test_with_bm.csv", row.names = FALSE)
+```
+
+```{r}
+colnames(final_data)
+```
+
+```{r}
+# checking columns for NA's
+columns_to_check <- c("DomesticDistributor_bm", "Budget_bm", 
+                      "DomesticOpening_bm", "DomesticGross_bm", 
+                      "InternationalGross_bm", "WorldwideGross_bm", "NumberOfMarkets_bm")
+
+# Drop rows where all specified columns are NA becuase they are not found in the site
+df_cleaned <- final_data %>%
+  filter(!(rowSums(is.na(select(., all_of(columns_to_check)))) == length(columns_to_check)))
+
+```
+
+```{r}
+write.csv(df_cleaned, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test_with_bm_cleaned.csv", row.names = FALSE)
 ```

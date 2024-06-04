@@ -18,3 +18,38 @@ data <- read_csv("Scrapping/movies_final_dataset_test.csv",
 summary(data)
 ```
 
+Actor gender
+diversity index
+female lead
+
+```{r}
+# Instalar y cargar las librerías necesarias
+install.packages("gender")
+library(gender)
+
+# Cargar tu conjunto de datos
+df <- read.csv("tu_dataset.csv")
+
+# Función para predecir el género a partir del primer nombre
+get_gender <- function(name) {
+    first_name <- unlist(strsplit(name, " "))[1]  # Asumimos que el primer nombre es la primera palabra del nombre completo
+    result <- gender(first_name, method = "ssa")
+    if (nrow(result) > 0 && result$gender[1] == "female") {
+        return(1)
+    } else {
+        return(0)
+    }
+}
+
+# Aplicar la función a las columnas de director y escritor
+df$director_is_woman <- sapply(df$director_name, get_gender)
+df$writer_is_woman <- sapply(df$writer_name, get_gender)
+
+# Guardar el dataset actualizado en un nuevo archivo CSV
+write.csv(df, "dataset_actualizado.csv", row.names = FALSE)
+
+# Mostrar las primeras filas para verificar las nuevas variables binarias
+head(df)
+
+```
+
