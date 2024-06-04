@@ -27,7 +27,7 @@ library(future.apply) # parallel processing
 ```
 
 ```{r}
-data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test_with_bm.csv",show_col_types = FALSE)
+data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test_with_bm_cleaned.csv",show_col_types = FALSE)
 
 colnames(data)[7] <- "release_year"
 ```
