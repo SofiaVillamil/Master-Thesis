@@ -18,7 +18,7 @@ library(rvest)
 library(dplyr)
 library(readr)
 library(future.apply) # parallel processing
-
+ 
 ```
 
 ```{r}

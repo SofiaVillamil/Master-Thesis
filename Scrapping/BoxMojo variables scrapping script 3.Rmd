@@ -37,7 +37,7 @@ scrape_boxofficemojo <- function(imdb_id, index) {
   }, error = function(e) {
     cat("Error in fetching URL:", url, "\n")
     return(NULL)
-  })
+  }) 
   
   if (is.null(movie_page)) return(NULL)
   

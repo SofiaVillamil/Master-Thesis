@@ -12,7 +12,7 @@ rm(list = ls())
 ```
 
 ```{r}
-set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com"))
+set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set user agent here. 
 ```
 
 ### Libraries
@@ -211,8 +211,8 @@ reversion_map <- c(
 # Example data set to try small number of movies then change to the data
 test_movies <- head(data,30)
 
-# Set up parallel processing
-plan(multisession, workers = 6)
+# Use parallel processing for scraping
+plan(multisession, workers = 7) # Adjust the number of workers based on your CPU, I have 8 so I put one less
 
 # Scrape data for each movie in the data set using parallel processing
 scraped_data_list <- future_lapply(seq_len(nrow(test_movies)), function(i) {
