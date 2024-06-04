@@ -97,16 +97,12 @@ scrape_boxofficemojo <- function(imdb_id, index) {
 }
 ```
 
-\# Use parallel processing for scraping
-
-plan(multisession, workers = 7) \# Adjust the number of workers based on your CPU, I have 8 so I put one less
-
 ```{r}
 # Load data
-movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes.csv",show_col_types = FALSE)
+movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test.csv",show_col_types = FALSE)
 
 # Example data set to try small number of movies then change to the data
-test_movies <- head(movies, 20) 
+test_movies <- movies
 
 scraped_data <- data.frame()
 
@@ -123,7 +119,7 @@ scraped_data <- bind_rows(scraped_data_list)
 
 # Suffix to be added to each column name for reference as i have many variables from dif places
 suffix <- "_bm"
-
+ 
 # Appending the suffix, except the first column for organization
 scraped_data <- scraped_data %>%
   rename_with(~ paste0(., suffix), -1)

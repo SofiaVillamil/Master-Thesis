@@ -27,7 +27,7 @@ library(future.apply) # parallel processing
 ```
 
 ```{r}
-data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test.csv",show_col_types = FALSE)
+data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test_with_bm.csv",show_col_types = FALSE)
 
 colnames(data)[7] <- "release_year"
 ```
@@ -209,7 +209,7 @@ reversion_map <- c(
 )
 
 # Example data set to try small number of movies then change to the data
-test_movies <- head(data,30)
+test_movies <- head(data,1)
 
 # Use parallel processing for scraping
 plan(multisession, workers = 7) # Adjust the number of workers based on your CPU, I have 8 so I put one less
@@ -230,8 +230,9 @@ scraped_data <- scraped_data %>%
 final_data2 <- left_join(test_movies, scraped_data, by = c("title" = "title_rt"))
  
 ```
+
 ```{r}
-# Save merged dataset
+# Save merged data set
 write_csv(final_data2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes.csv")
 ```
 
