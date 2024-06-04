@@ -21,6 +21,10 @@ library(future.apply) # parallel processing
 
 ```
 
+```{r}
+set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com"))
+```
+
 ### Scrapping function
 
 ```{r}
@@ -113,7 +117,6 @@ movies <- movies %>%
   group_by(title) %>%
   filter(year == min(year)) %>%
   ungroup()
-
 # Select the amount of movies to scrap in 8 hours
 test_movies <- head(movies, 55000) 
 

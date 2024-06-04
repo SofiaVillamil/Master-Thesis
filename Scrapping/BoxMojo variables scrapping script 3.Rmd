@@ -20,6 +20,11 @@ library(readr)
 library(future.apply) # parallel processing
 ```
 
+```{r}
+set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set user agent here
+
+```
+
 ### Scrapping function
 
 ```{r}
@@ -92,12 +97,16 @@ scrape_boxofficemojo <- function(imdb_id, index) {
 }
 ```
 
+\# Use parallel processing for scraping
+
+plan(multisession, workers = 7) \# Adjust the number of workers based on your CPU, I have 8 so I put one less
+
 ```{r}
 # Load data
 movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes.csv",show_col_types = FALSE)
 
 # Example data set to try small number of movies then change to the data
-test_movies <- movies 
+test_movies <- head(movies, 20) 
 
 scraped_data <- data.frame()
 
