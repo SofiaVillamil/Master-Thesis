@@ -55,7 +55,6 @@ data <- data %>% filter(!(is.na(GrossWorldwide_imdb) & is.na(WorldwideGross_bm))
 
 ```
 
-
 ### URL function to take into account all the different possibilities in the links
 
 ```{r}
@@ -212,7 +211,6 @@ scrape_rotten_tomatoes <- function(title, release_year = NULL, known_variation =
   })
   return(data_scrap)
 }
-
 
 ```
 

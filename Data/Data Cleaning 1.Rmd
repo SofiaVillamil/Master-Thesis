@@ -135,6 +135,6 @@ movies <- data %>% select(
 ```
 
 ```{r}
-write.csv(movies, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/data_final", row.names = FALSE)
+write.csv(movies, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/data_final.csv",row.names = FALSE)
 
 ```
