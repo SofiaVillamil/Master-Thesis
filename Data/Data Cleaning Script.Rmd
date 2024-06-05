@@ -1,55 +1,412 @@
 ---
-title: "Data cleaning"
+title: "Gender Individuals 3"
 author: "Sofia Villamil"
 date: "2024-06-01"
 output: html_document
 ---
+
 ```{r}
-library(readr)
+rm(list = ls())
 ```
 
 ```{r}
-data <- read_csv("Scrapping/movies_final_dataset_test.csv", 
+library(readr)
+library(gender)
+library(genderdata)
+```
+
+```{r}
+data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes_cleaned.csv", 
     col_types = cols(release_date = col_character(), 
         MPAA_imdb = col_character()))
 ```
 
-```{r}
-summary(data)
-```
-
-Actor gender
-diversity index
-female lead
+#### Gender of the individuals involved in the movie
 
 ```{r}
-# Instalar y cargar las librerías necesarias
-install.packages("gender")
-library(gender)
-
-# Cargar tu conjunto de datos
-df <- read.csv("tu_dataset.csv")
-
-# Función para predecir el género a partir del primer nombre
-get_gender <- function(name) {
-    first_name <- unlist(strsplit(name, " "))[1]  # Asumimos que el primer nombre es la primera palabra del nombre completo
-    result <- gender(first_name, method = "ssa")
-    if (nrow(result) > 0 && result$gender[1] == "female") {
-        return(1)
-    } else {
-        return(0)
-    }
+# Function to get the gender of the individuals using multiple methods
+get_gender <- function(names) {
+    first_names <- sapply(strsplit(names, " "), `[`, 1)
+    results <- gender(first_names, method = "ssa")
+    
+    # Create a gender map with NA for missing values
+    gender_map <- setNames(ifelse(is.na(results$gender), NA, ifelse(results$gender == "female", 1, 0)), results$name)
+    return(gender_map)
 }
 
-# Aplicar la función a las columnas de director y escritor
-df$director_is_woman <- sapply(df$director_name, get_gender)
-df$writer_is_woman <- sapply(df$writer_name, get_gender)
+# Extract unique names from the specified columns
+unique_directors <- unique(data$Director_imdb)
+unique_actors <- unique(data$FirstActor_imdb)
 
-# Guardar el dataset actualizado en un nuevo archivo CSV
-write.csv(df, "dataset_actualizado.csv", row.names = FALSE)
+# Apply the function to the unique names
+gender_map_directors <- get_gender(unique_directors)
+gender_map_actors <- get_gender(unique_actors)
 
-# Mostrar las primeras filas para verificar las nuevas variables binarias
-head(df)
+# Function to map gender from the gender map
+map_gender <- function(name, gender_map) {
+    first_name <- unlist(strsplit(name, " "))[1]
+    return(ifelse(is.null(gender_map[first_name]), NA, gender_map[first_name]))
+}
+
+# Add gender information to the original data frame
+data$director_is_woman <- sapply(data$Director_imdb, map_gender, gender_map = gender_map_directors)
+data$lead_is_woman <- sapply(data$FirstActor_imdb, map_gender, gender_map = gender_map_actors)
+
+# Extract names identified as female (1) and NA for checking
+female_directors <- unique(data$Director_imdb[data$director_is_woman == 1 | is.na(data$director_is_woman)])
+female_actors <- unique(data$FirstActor_imdb[data$lead_is_woman == 1 | is.na(data$lead_is_woman)])
+
 
 ```
 
+```{r}
+# they were corrected using the chat so all names are verified to be correct.
+manual_corrections <- c(
+  "Jamie Foxx"= 0, "BTS"= 0, "One Direction" =0,
+  "Taika Waititi" = 0, "Peyton Reed" = 0, "J.J. Abrams" = 0, "Baz Luhrmann" = 0,
+  "J.A. Bayona" = 0, "F. Gary Gray" = 0, "D.J. Caruso" = 0, "Genndy Tartakovsky" = 0,
+  "Jean-Marc Vallée" = 0, "Roar Uthaug" = 0, "Yeon Sang-ho" = 0, "Galder Gaztelu-Urrutia" = 0,
+  "M. Night Shyamalan" = 0, "Yorgos Lanthimos" = 0, "Gore Verbinski" = 0, "J Blakeson" = 0,
+  "Jaume Collet-Serra" = 0, "José Padilha" = 0, "Taylor Sheridan" = 0, "Abdellatif Kechiche" = 0,
+  "Fede Alvarez" = 0, "Oriol Paulo" = 0, "R.J. Cutler" = 0, "Leigh Whannell" = 0,
+  "André Øvredal" = 0, "Måns Mårlind" = 0, "Harmony Korine" = 0, "McG" = 0, "Ol Parker" = 0,
+  "Damián Szifron" = 0, "Tarsem Singh" = 0, "Taylor Hackford" = 0, "Hayao Miyazaki" = 0,
+  "Kim Jee-woon" = 0, "Tetsuro Kodama" = 0, "Asger Leth" = 0, "Gabriele Mainetti" = 0,
+  "F. Javier Gutiérrez" = 0, "DK Welchman" = 0, "Éric Lartigau" = 0, "Rodo Sayagues" = 0,
+  "Michaël R. Roskam" = 0, "Ciarán Foy" = 0, "S. Craig Zahler" = 0, "Kore-eda Hirokazu" = 0,
+  "Lin-Manuel Miranda" = 0, "Sydney Sibilia" = 0, "Tsuneo Kobayashi" = 0, "Tadayoshi Yamamuro" = 0,
+  "Hiromasa Yonebayashi" = 0, "Il Cho" = 0, "Mitja Okorn" = 0, "Thurop Van Orman" = 0,
+  "Na Hong-jin" = 0, "J.C. Chandor" = 0, "Camille Delamarre" = 0, "Jean-François Richet" = 0,
+  "Karey Kirkpatrick" = 0, "Sacha Gervasi" = 0, "Boots Riley" = 0, "Jun'ichi Fujise" = 0,
+  "Kelly Asbury" = 0, "Dome Karukoski" = 0, "Robin Campillo" = 0, "Sebastián Cordero" = 0,
+  "Álex de la Iglesia" = 0, "Diederik Van Rooijen" = 0, "Todor Chapkanov" = 0,
+  "François Simard" = 0, "Checco Zalone" = 0, "Jérémy Clapin" = 0,
+  "Pierre-François Martin-Laval" = 0, "François Ozon" = 0, "Bobs Gannaway" = 0, "Sunghoo Park" = 0,
+  "S.S. Rajamouli" = 0, "Janus Metz" = 0, "Pif" = 0, "RZA" = 0, "Leos Carax" = 0,
+  "Ryûsuke Hamaguchi" = 0, "Jaume Balagueró" = 0, "Hideaki Anno" = 0, "Kazuaki Kiriya" = 0,
+  "Lin Oeding" = 0, "Jeymes Samuel" = 0, "Ariel Vromen" = 0, "Sung-hee Jo" = 0,
+  "Gabriele Muccino" = 0, "Jackie Chan" = 0, "Gorô Taniguchi" = 0, "Eshom Nelms" = 0,
+  "Baz Poonpiriya" = 0, "Mahiro Maeda" = 0, "Uli Edel" = 0, "Zal Batmanglij" = 0,
+  "Eiichirô Hasumi" = 0, "Jean-Pierre Jeunet" = 0, "Yasushi Kawamura" = 0,
+  "Ángel Gómez Hernández" = 0, "Shin'ichirô Ueda" = 0, "Roschdy Zem" = 0, "Farren Blackburn" = 0,
+  "Jean-Marie Poiré" = 0, "Cédric Klapisch" = 0, "Kei'ichi Sato" = 0, "Dito Montiel" = 0,
+  "Tomohiko Itô" = 0, "André Pellenz" = 0, "Jung Byung-gil" = 0, "Woo-Ping Yuen" = 0,
+  "Kunihiko Yuyama" = 0, "Corin Hardy" = 0, "Frédéric Tellier" = 0, "Courtney Solomon" = 0,
+  "Matthijs van Heijningen Jr." = 0, "Hèctor Hernández Vicens" = 0, "Masakazu Hashimoto" = 0,
+  "Ryûhei Kitamura" = 0, "Jung Bum-shik" = 0, "Stéphane Aubier" = 0, "Banjong Pisanthanakun" = 0,
+  "Patrice Leconte" = 0, "Kim Seong-hun" = 0, "Dominique Farrugia" = 0, "Marian Bushan" = 0,
+  "Jean-Stéphane Sauvaire" = 0, "Haoling Li" = 0, "Régis Roinsard" = 0, "Sebastián Borensztein" = 0,
+  "Kim Byung-seo" = 0, "Sunao Katabuchi" = 0, "Morgan Matthews" = 0, "Fumihiko Sori" = 0,
+  "Jamie Linden" = 0, "Morgan Neville" = 0, "Mukunda Michael Dewil" = 0, "César Rodrigues" = 0,
+  "Sôichi Masui" = 0, "Demián Rugna" = 0, "Robin Bissell" = 0, "Kôtarô Tamura" = 0,
+  "Bille August" = 0, "Serik Beyseu" = 0, "Benh Zeitlin" = 0, "László Nemes" = 0, "Yasuto Nishikata" = 0, "Asghar Farhadi" = 0,
+  "Yong-hwa Kim" = 0, "Navot Papushado" = 0, "Bobcat Goldthwait" = 0, "Hun Jang" = 0,
+  "Mabrouk El Mechri" = 0, "Frant Gwo" = 0, "Kar-Wai Wong" = 0, "Caradog W. James" = 0,
+  "Andrea Di Stefano" = 0, "Jean-Jacques Annaud" = 0, "Tatsuyuki Nagai" = 0,
+  "Shinsuke Sato" = 0, "Yuen Fai Ng" = 0, "Indar Dzhendubaev" = 0, "Pupi Avati" = 0,
+  "Zhangke Jia" = 0, "Florent-Emilio Siri" = 0, "Junji Shimizu" = 0, "Shôjirô Nishimi" = 0,
+  "Sujoy Ghosh" = 0, "Wim Wenders" = 0, "Tetsurô Araki" = 0, "Han Jae-rim" = 0,
+  "Michele Soavi" = 0, "Daniele Luchetti" = 0, "Crispian Mills" = 0, "Yunfei Wang" = 0,
+  "Svyatoslav Podgaevskiy" = 0, "Dong-hoon Choi" = 0, "Varante Soudjian" = 0,
+  "Jérôme Commandeur" = 0, "Nimród Antal" = 0, "Glendyn Ivin" = 0, "Han-min Kim" = 0,
+  "Grímur Hákonarson" = 0, "J.M Cravioto" = 0, "Waad Al-Kateab" = 0, "Myroslav Slaboshpytskyi" = 0,
+  "Nanni Moretti" = 0, "Hark Tsui" = 0, "Ji-hoon Kim" = 0, "Jerzy Skolimowski" = 0,
+  "Xiaopeng Tian" = 0, "Prachya Pinkaew" = 0, "Hervé Mimran" = 0,
+  "Jing Wu" = 0, "Jean-Paul Salomé" = 0, "Ryoo Seung-wan" = 0, "Jean-Bernard Marlin" = 0,
+  "Yi'nan Diao" = 0, "Víctor Garcia" = 0, "Tze Chun" = 0, "Pearry Reginald Teo" = 0,
+  "Rakeysh Omprakash Mehra" = 0, "Tomohisa Taguchi" = 0, "Hu Guan" = 0, "Soi Cheang" = 0,
+  "Katsushi Sakurabi" = 0, "Dagur Kári" = 0, "Patxi Amezcua" = 0,
+  "Simone Spada" = 0, "Joon-Hwan Jang" = 0, "Xiao Feng" = 0, "Thorbjørn Christoffersen" = 0,
+  "Byung-woo Kim" = 0, "Tomonori Sudô" = 0, "Benoît Delépine" = 0, "Alê Abreu" = 0,
+  "Volker Schlöndorff" = 0, "Kôji Shiraishi" = 0, "Hiroyasu Ishida" = 0, "Rahi Anil Barve" = 0,
+  "Dzhanik Fayziev" = 0, "Sönke Wortmann" = 0, "Étienne Chatiliez" = 0, "Rapman" = 0,
+  "Eskil Vogt" = 0, "Naoyoshi Shiotani" = 0, "Younuts" = 0, "Álvaro Díaz Lorenzo" = 0,
+  "Takehiko Inoue" = 0, "Jérôme Salle" = 0, "R. Balki" = 0, "Jae-Hoon Choi" = 0,
+  "Seok-hoon Lee" = 0, "Jang-Hoon Lee" = 0,
+  "Wing-Cheong Law" = 0, "Benni Diez" = 0, "René Sampaio" = 0, "Dani de la Torre" = 0,
+  "Dani de la Orden" = 0, "Yukihiro Miyamoto" = 0, "Shree Narayan Singh" = 0,
+  "Jun-Soo Park" = 0, "Péter Bergendy" = 0, "Jérémie Degruson" = 0, "Jo Ba-Reun" = 0,
+  "Denys Arcand" = 0, "Jingming Guo" = 0, "Cheol-soo Jang" = 0, "Masaharu Watanabe" = 0,
+  "Shoojit Sircar" = 0, "Jeethu Joseph" = 0, "Hernán Goldfrid" = 0, "Yûzô Satô" = 0,
+  "Jean-Luc Godard" = 0, "Le-Van Kiet" = 0, "Jean-Luc Godard" = 0, "Yûichi Fukuda" = 0,
+  "Woo-seok Yang" = 0, "Xiaoshuai Wang" = 0, "Questlove" = 0, "Pitipol Ybarra" = 0,
+  "Héctor Cabello Reyes" = 0, "Juno Mak" = 0, "Sang-yoon Lim" = 0, "Renat Davletyarov" = 0,
+  "Jérémie Guez" = 0, "Mika Kaurismäki" = 0, "Lluís Quílez" = 0, "Akira Hashimoto" = 0,
+  "Chuan Lu" = 0, "Joaquín Mazón" = 0, "Amat Escalante" = 0,
+  "Vladlen Barbe" = 0, "Shakun Batra" = 0, "Keiichirô Kawaguchi" = 0, "Lok Man Leung" = 0, "Junta Yamaguchi" = 0, "Wai-Man Yip" = 0,
+  "Mathur Goswami" = 0, "Pim van Hoeve" = 0, "Guðmundur Arnar Guðmundsson" = 0,
+  "Teller" = 0, "Hanno Olderdissen" = 0, "Jang Jae-hyun" = 0, "Álvaro Fernández Armero" = 0,
+  "Yuzuru Tachikawa" = 0, "Kwang-shik Kim" = 0, "Setsurô Wakamatsu" = 0, "Corneliu Porumboiu" = 0, "Hong Chang-Pyo" = 0, "Benoît Jacquot" = 0, "Chi-Kin Kwok" = 0,
+  "Sung-bo Shim" = 0, "Jean-Patrick Benes" = 0, "Apichatpong Weerasethakul" = 0,
+  "Andrés Couturier" = 0, "Kazuchika Kise" = 0,
+  "Özcan Deniz" = 0, "Stobe Harju" = 0, "Yu Shan Chen" = 0, "Chang-min Choo" = 0,
+  "Jae-young Kwak" = 0, "Hafsteinn Gunnar Sigurðsson" = 0, "Muye Wen" = 0, "Hong Sang-soo" = 0,
+  "Ask Hasselbalch" = 0, "Yibran Asuad" = 0, "Iginio Straffi" = 0, "Uberto Pasolini" = 0, "Jean-Michel Bensoussan" = 0,
+  "Akan Satayev" = 0, "Álvaro Longoria" = 0, "J.-P. Valkeapää" = 0, "Jérôme Bonnell" = 0,
+  "Liming Li" = 0, "Obin Olson" = 0, "Klim Shipenko" = 0,
+  "Karan Malhotra" = 0, "Costa-Gavras" = 0, "Joaquín Cociña" = 0,
+  "Arie Posin" = 0, "Nicolás López" = 0, "Yilmaz Erdogan" = 0, "Samu Fuentes" = 0,
+  "Jean Becker" = 0, "Ziming Wang" = 0, "Keiichi Hara" = 0, "Zhenzhao Lin" = 0,
+  "Min-ho Woo" = 0, "Tae-hwa Eom" = 0, "Evgeniy Puzyrevskiy" = 0,
+  "Sheng Ding" = 0, "Dong-won Kim" = 0, "Teona Strugar Mitevska" = 0,
+  "Kyeong-Taek Lim" = 0, "Grégory Magne" = 0, "Shekhar Kapur" = 0, "Jong-suk Lee" = 0,
+  "Ling Jia" = 0, "Fabrício Bittar" = 0, "Subhash Kapoor" = 0,
+  "Kang Hyo-jin" = 0, "Cãlin Peter Netzer" = 0, "Rémi Bezançon" = 0, "Yuefeng Song" = 0,
+  "Émile Gaudreault" = 0, "Plan B" = 0, "Hua-Tao Teng" = 0, "Ha Jung Jae" = 0,
+  "Nobuhiro Doi" = 0, "Hong Khaou" = 0, "Yôichi Fujita" = 0,
+  "Hong-Seung Yoon" = 0, "Yong-wan Kim" = 0, "Hallvard Bræin" = 0,
+  "Kae-Byeok Lee" = 0, "Bejoy Nambiar" = 0, "Byun Sung-hyun" = 0, "Wladyslaw Pasikowski" = 0,
+  "Ishi Rudell" = 0, "Tigmanshu Dhulia" = 0,
+  "Kôbun Shizuno" = 0, "Louis-Julien Petit" = 0, "Detlev Buck" = 0,
+  "Pat Holden" = 0, "Selçuk Aydemir" = 0, "Nicolás Onetti" = 0, "Jean-Paul Rouve" = 0,
+  "Hong-soo Park" = 0, "Chava Cartas" = 0, "Kentarô Ohtani" = 0, "Tinu Suresh Desai" = 0,
+  "Ketche" = 0, "Koldo Serra" = 0, "Kerry Harris" = 0, "Martín Rosete" = 0, "Togan Gökbakar" = 0,
+  "Sébastien Marnier" = 0, "Michele Placido" = 0, "Dzintars Dreibergs" = 0, "Ramón Salazar" = 0,
+  "Han Sang-Ho" = 0, "Félix Moati" = 0, "Kornél Mundruczó" = 0, "Fujiaki Asari" = 0,
+  "Halder Gomes" = 0, "Homi Adajania" = 0, "Euros Lyn" = 0, "Jóhann Jóhannsson" = 0,
+  "Radha Krishna Jagarlamudi" = 0, "Karzan Kader" = 0, "Raúl de la Fuente" = 0,
+  "Barthélémy Grossmann" = 0, "Kantemir Balagov" = 0, "Clément Michel" = 0,
+  "Fenar Ahmad" = 0, "Sicheng Chen" = 0, "Sooraj R. Barjatya" = 0, "François Favrat" = 0,
+  "Ashim Ahluwalia" = 0, "Safy Nebbou" = 0, "Katsuyuki Motohiro" = 0, "Dani Levy" = 0,
+  "Ryôta Nakano" = 0, "Yong-ho Son" = 0, "JK Youn" = 0, "Krishna D.K." = 0, "Da-Mo Peng" = 0,
+  "Benoît Forgeard" = 0, "Julia von Heinz" = 0, "Óliver Laxe" = 0, "Sukumar" = 0,
+  "Dror Moreh" = 0, "Makinov" = 0, "Atiq Rahimi" = 0, "Li Yi" = 0,
+  "Hlynur Pálmason" = 0, "Thiagarajan Kumararaja" = 0, "Berardo Carboni" = 0,
+  "João Pedro Rodrigues" = 0, "Mouloud Achour" = 0, "Jeong-woo Park" = 0,
+  "In-chun Oh" = 0, "Jun-hee Han" = 0, "Jan P. Matuszynski" = 0, "Lázaro Ramos" = 0, "Ribhu Dasgupta" = 0, "Ryôtarô Makihara" = 0,
+  "Luv Ranjan" = 0, "C. Prem Kumar" = 0, "Xiaolu Xue" = 0, "Sarik Andreasyan" = 0, "Pål Øie" = 0,
+  "Toshiaki Toyoda" = 0, "Jean-Jacques Denis" = 0, "Heung-sik Park" = 0, "Fran Torres" = 0,
+  "Chi Leung 'Jacob' Cheung" = 0, "Vinil Mathew" = 0, "Ui-seok Jo" = 0, "Omung Kumar" = 0,
+  "Iñaki Dorronsoro" = 0, "Shô Tsukikawa" = 0, "Roni Ezra" = 0, "Jean-Paul Rappeneau" = 0,
+  "Prabhu Deva" = 0, "Jan Lachauer" = 0, "Kar Lok Chin" = 0, "Hyeon Na" = 0,
+  "Karen Shakhnazarov" = 0, "Tanel Toom" = 0, "Andrés M. Koppel" = 0, "Kazuhiko Hiramaki" = 0, "Paulinho Caruso" = 0, "Andrucha Waddington" = 0,
+  "Dibakar Banerjee" = 0, "Henk Pretorius" = 0, "Gérard Jugnot" = 0,
+  "Tiller Russell" = 0, "Wych Kaosayananda" = 0, "Yong-gyun Kim" = 0, "Beom-gu Cho" = 0,
+  "Noriyuki Abe" = 0, "T.C. Christensen" = 0, "Keitarô Motonaga" = 0, "Ha Yoo" = 0, "Won-Geun Song" = 0, "Caco Souza" = 0, "Tomás Rehorek" = 0, "Adrián Saba" = 0,
+  "Tanit Jitnukul" = 0, "L.A. Lopes" = 0, "Sangwoo Kang" = 0, "Tian-Hao Hua" = 0,
+  "Antón Terni" = 0, "Jae-Hwan Kim" = 0, "Caupolican Ovalles" = 0, "Dervis Zaim" = 0,
+  "Alvar Gordejuela" = 0, "Youlun Peng" = 0, "Ming-Kai Leung" = 0, "Shintarô Sugawara" = 0,
+  "Nobuyuki Sakuma" = 0, "Toshinori Fukuzawa" = 0, "Bülent Aydoslu" = 0, "Ishaya Bako" = 0,
+  "Wasin Pokpong" = 0, "Rezzan Tanyeli" = 0, "Joon-Young Bong" = 0, "Gireesh Nair" = 0,
+  "Byeon Hee-sun" = 0, "Sathish Selvakumar" = 0, "Adán Aliaga" = 0, "Jebum Park" = 0,
+  "Xiaoming Chen" = 0, "Özgür Özberk" = 0, "Liviu Sandulescu" = 0, "Ashley Joiner" = 0,
+  "Juha Wuolijoki" = 0, "Vyasan Edavanakkad" = 0, "Jan-Willem Wit" = 0, "Bay Okan" = 0,
+  "Choi Joon-woo" = 0, "Yiwei Liu" = 0, "Asori Soto" = 0, "Hans-Jörg Hofer" = 0,
+  "Pantham Thongsangl" = 0, "Sakthi Chidambaram" = 0, "Shaohong Li" = 0, "Jade Castro" = 0,
+  "Nándor Lörincz" = 0, "Peio Cachenaut" = 0, "Panjapong Kongkanoy" = 0, "Tak-Sam Leong" = 0,
+  "Caner Erzincan" = 0, "Bei'er Bao" = 0, "Giorgos Panousopoulos" = 0, "Ansgar Niebuhr" = 0,
+  "Soumya Sadanandan" = 0, "Frasco Mortiz" = 0, "Hinano Kamimura" = 0, "Georgi Bogdanov" = 0,
+  "Pak-Wing Yan" = 0, "Noh Gyoo-Yeob" = 0, "Balázs Lóth" = 0, "Yuthakorn Sukmuktapha" = 0,
+  "Julián Giulianelli" = 0, "F.A. Brabec" = 0, "Qunshu Gao" = 0, "Masafumi Nishida" = 0,
+  "Ziya Demirel" = 0, "A.B. Zax" = 0, "Jayalal Divakaran" = 0, "Baghal Singh" = 0,
+  "Min-woo Seok" = 0, "Dionne Edwards" = 0, "Jatuphong Rungrueangdechaphat" = 0, "Araik Oganesyan" = 0,
+  "Teja Marni" = 0, "Joydeep Mukherjee" = 0, "Sivashankar Dev" = 0, "Ngoc Dang Vu" = 0,
+  "Anirban Bhattacharya" = 0, "Dmytro Golumbevskyi" = 0, "Fariborz Kamkari" = 0, "Zübeyr Sasmaz" = 0,
+  "Srdja Andjelic" = 0, "Sinto Sunny" = 0, "Joonas Berghäll" = 0, "Apurba Kishore Bir" = 0,
+  "Gangliang Fang" = 0, "Jong-Hoon Lee" = 0, "Stany Crets" = 0, "Cemil Agacikoglu" = 0,
+  "Birkan Uz" = 0, "Óscar Parra de Carrizosa" = 0, "Michal Bandurski" = 0, "Fuyuan Liu" = 0,
+  "Yûji Nakae" = 0, "Stephy Zaviour" = 0, "Wu Yang" = 0, "Jass Grewal" = 0,
+  "Eeshaan Suryaah" = 0, "Gastón Gallo" = 0, "Nicola Prosatore" = 0, "V.C. Abhilash" = 0,
+  "Chhetan Gurung" = 0, "Ko-Tai Chou" = 0, "K.R. Praveen" = 0, "Luís Galvão Teles" = 0,
+  "G. Mete Sener" = 0, "A.R. Mohan" = 0, "Hans-Jörg Hofer" = 0, 
+  "Toni Servillo" = 0, "T.J. Miller" = 0, "Kodi Smit-McPhee" = 0, "Riz Ahmed" = 0,
+  "Ferdia Walsh-Peelo" = 0, "Ice Cube" = 0, "Jean-Louis Trintignant" = 0, "Sunny Suljic" = 0,
+  "Jean-Pierre Bacri" = 0, "Mahiro Takasugi" = 0, "Yoo Ah-in" = 0, "Jean-Claude Van Damme" = 0,
+  "Hidetoshi Nishijima" = 0, "Xolo Maridueña" = 0, "Keegan-Michael Key" = 0, "Géza Röhrig" = 0,
+  "Yûki Kaji" = 0, "Tahar Rahim" = 0, "Song Joong-ki" = 0, "Ludovico Girardello" = 0,
+  "Ghilherme Lobo" = 0, "Reese Mishler" = 0, "Kev Adams" = 0, "Song Kang-ho" = 0,
+  "Mackenyu" = 0, "Ma Dong-seok" = 0, "Melvil Poupaud" = 0, "Irrfan Khan" = 0,
+  "Jean Dujardin" = 0, "Hanno Koffler" = 0, "Félix Lefebvre" = 0, "Prabhas" = 0,
+  "Orelsan" = 0, "Kris Hitchen" = 0, "Berant Zhu" = 0, "Jean-Pascal Zadi" = 0,
+  "Shaofeng Feng" = 0, "Dougray Scott" = 0, "Sverrir Gudnason" = 0, "N.T. Rama Rao Jr." = 0,
+  "Tikhon Zhiznevskiy" = 0, "Ryôsuke Yamada" = 0, "Arnas Fedaravicius" = 0, "Haluk Bilginer" = 0,
+  "Falk Hentschel" = 0, "H. Jon Benjamin" = 0, "Kad Merad" = 0, "Alexis Denisof" = 0,
+  "Józef Pawlowski" = 0, "Hryhoriy Fesenko" = 0, "François-Xavier Demaison" = 0,
+  "Yûsuke Kobayashi" = 0, "Kostja Ullmann" = 0, "Quim Gutiérrez" = 0, "Seo In-Guk" = 0,
+  "Karra Elejalde" = 0, "Sigurður Sigurjónsson" = 0, "Yô Ôizumi" = 0, 
+  "Fábio Porchat" = 0, "Birane Ba" = 0, "Toshiyuki Nishida" = 0, "Jiayin Lei" = 0,
+  "Hwang Jung-min" = 0, "Fan Liao" = 0, "Hanyu Zhang" = 0, "Ludovico Tersigni" = 0,
+  "Wotan Wilke Möhring" = 0, "Dogu Demirkol" = 0, "Théo Fernandez" = 0, "Zhizhong Huang" = 0,
+  "Joep Paddenburg" = 0, "J.K. Simmons" = 0, "Aneurin Barnard" = 0, "Ye Liu" = 0,
+  "Cho Jae-hyun" = 0, "Giampaolo Morelli" = 0, "Won-Jin Ahn" = 0, "Sôsuke Ikematsu" = 0,
+  "Mizuki Yamamoto" = 0, "Kana Kita" = 0, "Raphaël Personnaz" = 0, "Stanislas Stanic" = 0,
+  "Rossif Sutherland" = 0, "So Ji-seob" = 0, "Antônio Fragoso" = 0, "Geert Van Rampelberg" = 0,
+  "Vicky Kaushal" = 0, "Réphaël Ghrenassia" = 0, "Burghart Klaußner" = 0,
+  "Kazunari Tosa" = 0, "Matti Stooker" = 0, "Baldur Einarsson" = 0, "Haley Joel Osment" = 0,
+  "Til Schweiger" = 0, "Nikita Volkov" = 0, "Jürgen Vogel" = 0, "JoeyStarr" = 0,
+  "Sascha Alexander" = 0, "Noritake Kinashi" = 0, "Jesús Barreda" = 0, "Pekka Strang" = 0,
+  "Rajinikanth" = 0, "Skylar Astin" = 0, "Iván Kamarás" = 0, "Reda Kateb" = 0,
+  "Ange Dargent" = 0, "Engin Günaydin" = 0, "Granit Rushiti" = 0, "Kivanç Tatlitug" = 0,
+  "Rajkummar Rao" = 0, "Monsieur Poulpe" = 0,
+  "Nae Alexandru" = 0, "Hykie Berg" = 0, "Seyit Nizam Yilmaz" = 0, "Satyadev Kancharana" = 0,
+  "Parthasaradhi" = 0, "Ernõ Fekete" = 0, "Goli Mohammed Ali" = 0, "Yûto Nakajima" = 0,
+  "Stefán Karl Stefánsson" = 0, "Sercan Tosun" = 0, "António Mortágua" = 0,"Malte Arkona" = 0, "Sharafudheen" = 0, "Nicke Lignell" = 0, "Jean-Yves Ollivier" = 0,
+  "Sachiin Joshi" = 0, "Ananda Everingham" = 0, "Perico Delgado" = 0, "Gys de Villiers" = 0,
+  "Dmitrious Bistrevsky" = 0, "Ervis Alia" = 0, "Tofiga Fepulea'i" = 0, "Gürol Güngör" = 0,
+  "SUGA" = 0, "Sibusiso Khwinana" = 0, "Yfendo van Praag" = 0, "Jesdaporn Pholdee" = 0,
+  "Sompob Benjathikul" = 0, "Akinori Andô" = 0, "Youliang Zhao" = 0, "Frano Maskovic" = 0,
+  "Elõd Bálint" = 0, "Denisas Kolomyckis" = 0, "Dónall Ó Héalai" = 0, "Shuichiro Naito" = 0,
+  "Innokenty Lukovtsev" = 0, "Shûhei Nomura" = 0, "Zhan Chuheng" = 0, "Paulius Ambrazevicius" = 0,
+  "Zigmantas Baranauskas" = 0, "Orkhan Iskandarli" = 0, "Magnar Kleiva" = 0, "Korapat Kirdpan" = 0,
+  "Jukrit Ammarat" = 0, "Samuthirakani" = 0, "Gela Meskhi" = 0, "Vasant Balan" = 0,
+  "Petrosyan Armen" = 0, "Gurnam Bhullar" = 0, "Jean-Claude Carrière" = 0, "Bartho Braat" = 0,
+  "Lathrop Walker" = 0, "Ramunas Cicenas" = 0, "Eliyha Altena" = 0, "Miloud Mourad Benamara" = 0,
+  "A.C. Bhaktivedanta Swami" = 0, "Banky Wellington" = 0, "Primoz Vrhovec" = 0, "Kari Väänänen" = 0,
+  "Nebojsa Djordjevic" = 0, "Cezmi Baskin" = 0, "Öner Erkan" = 0, "Herz Frank" = 0,
+  "Tihomir Stanic" = 0, "Sibiraj" = 0, "Malin Krastev" = 0, "Süleyman Kabaali" = 0,
+  "Ignat Akrachkov" = 0, "Borek Belfin" = 0, "Norikyan Artur" = 0, "Murathan Muslu" = 0,
+  "Jan Lehotský" = 0, "Bjarni Baldvinsson" = 0, "Alican Yücesoy" = 0, "Oldrich Kaiser" = 0,
+  "Petri Hämäläinen" = 0, "Gnanasambandan Gurunathan" = 0, "Boman Irani" = 0, "Arulnithi" = 0,
+  "Emun Elliott" = 0, "Sergej Trifunovic" = 0, "Moon Chang-gil" = 0, "Pongtap Anurat" = 0,
+  "Fab 5 Freddy" = 0, "Ercan Zincir" = 0, "Coco Martin" = 0, "Shrinivas Pokale" = 0,
+  "Libor Boucek" = 0,"Jackky Bhagnani" = 0, "Emmanuele Aita" = 0, "Thakrit Tawanpong" = 0, "Firat Sobutay" = 0,
+  "Ângelo Antônio" = 0, "Fakhir Berwari" = 0, "Dharun Bala" = 0, "Leehom Wang" = 0,
+  "Chafûrin" = 0, "Kaspars Anins" = 0, "Denizhan Akbaba" = 0, "Jarkko Niemi" = 0,
+  "Þorsteinn Bachmann" = 0, "Allu Sirish" = 0, "Iulian Postelnicu" = 0, "Ramasan Minkailov" = 0,
+  "Kalidas Jayaram" = 0, "Grégoire Leprince-Ringuet" = 0, "Sasson Gabay" = 0, "Vladas Bagdonas" = 0,
+  "Angkul Jeennukul" = 0, "Matsen Montsma" = 0, "Yûsuke Arai" = 0, "Diganth" = 0,
+  "Stepán Kozub" = 0, "Sunny Kaushal" = 0, "Babyjohn Choi" = 0, "Sasa Anocic" = 0,
+  "Przemyslaw Bluszcz" = 0, "Agnaldo Timóteo" = 0, "Dong-kyu Han" = 0, "Shahine El-Hamus" = 0,
+  "Lei Ao" = 0, "Sondre Blakstad Henriksen" = 0, "Ola G. Furuseth" = 0, "Tsurube Shôfukutei" = 0,
+  "Kalaiarasan Harikrishnan" = 0, "Scoot McNairy" = 0, "Yungdrung Gyal" = 0, "Dann Jaques Mouton" = 0,
+  "Ritwick Chakraborty" = 0, "Svein André Hofsø Myhre" = 0, "Bhole Baba" = 0, "Shengcang Yang" = 0,
+  "Upendra" = 0, "Cho Hyun-chul" = 0, "Tuncay Akdemir" = 0, "Hiphop Tamizha Adhi" = 0,
+  "Aashiq" = 0, "Rubén Fulgencio" = 0, "Jaturong Mokjok" = 0, "Priyadarshi Pulikonda" = 0,
+  "Nikita Efremov" = 0, "Shlomi Bertonov" = 0, "Elias León Siminiani" = 0, "Audrius Bruzas" = 0,
+  "Virgílio Castelo" = 0, "Wau Holland" = 0, "Rib Hillis" = 0, "Babis Alatzas" = 0,
+  "Arya Babbar" = 0, "Mahaboob Basha" = 0, "Jean-Hugues Anglade" = 0, "Chinawut Indracusin" = 0,
+  "M.S. Bhaskar" = 0, "Vedran Zivolic" = 0, "Xi Jinping" = 0, "Thiruveer" = 0,
+  "Sertaç Ekici" = 0, "Assadollah Alam" = 0, "Dingdong Dantes" = 0, "Vice Ganda" = 0,
+  "Sathyaraj" = 0, "Áron Molnár" = 0, "Chien-ming Wang" = 0, "Kristers Piksa" = 0,
+  "J.D. Chakravarthi" = 0, "Kjell-Erik Gunnarsen" = 0, "Heikki Kinnunen" = 0, "Kathir" = 0,
+  "Máté Mészáros" = 0,  "Jirí Bartoska" = 0, "Gosha Kutsenko" = 0, "Jesús Lloveras" = 0, "Sharan" = 0,
+  "Singh Hartihan Bitto" = 0, "Samakab Omar" = 0, "Charly Etchévers" = 0, "Darri Ingolfsson" = 0,
+  "Camarón de la Isla" = 0, "Mikk Mägi" = 0, "Csanad Szegedi" = 0, "Tamás Szabó Kimmel" = 0,
+  "Björn Thors" = 0, "Abimana Aryasatya" = 0, "Ekawat Ekudchariya" = 0, "Bahman Mohasses" = 0,
+  "Booder" = 0, "Tran Anh Khoa" = 0, "Cho Young-Chan" = 0, "Siddique" = 0,
+  "Gopichand" = 0, "Traianos Dellas" = 0, "Oh Ji-ho" = 0, "Slava Babenkov" = 0,
+  "Iiro Panula" = 0, "Ángelo Mutti Spinetta" = 0, "Gaku Sano" = 0, "Sunny Wayne" = 0,
+  "Andrija Milosevic" = 0, "Kubilay Aka" = 0, "Dawei Tong" = 0, "Odd-Magnus Williamson" = 0,
+  "Daigo Naito" = 0, "Turkka Mastomäki" = 0, "Cheyenne Jackson" = 0, "Cheon Jeong-myeong" = 0,
+  "Brasse Brännström" = 0, "Kris Saddler" = 0, "T.J. Thyne" = 0, "Cahit Kasikcilar" = 0,
+  "Mykhailo Khoma" = 0, "Théo Cholbi" = 0, "Bat-Ireedui Batmunkh" = 0, "Perro Aguayo Jr." = 0,
+  "Makan Nathan Diarra" = 0, "Yûma Ishigaki" = 0, "V. Ravichandran" = 0, "Atharvaa Murali" = 0,
+  "Grégoire Colin" = 0, "Balu Varghese" = 0, "Junya Enoki" = 0, "Kabwita Kasongo" = 0,
+  "Thabo Rametsi" = 0, "Dries Van Noten" = 0, "Slimane Benouari" = 0, "Fabián Arenillas" = 0,
+  "Alkis Kourkoulos" = 0, "Priit Võigemast" = 0, "Nejat Isler" = 0, "Yuri Askarov" = 0,
+  "Menderes Samancilar" = 0, "Nandamuri Kalyan Ram" = 0, "Sampo Sarkola" = 0, "Ka-Ki Sham" = 0,
+  "Santhanam" = 0, "Khadka Raj Nepali" = 0, "Heikki Tolonen" = 0, "Yihao Chen" = 0,
+  "Ugur Polat" = 0, "Suniel Shetty" = 0, "Eom Tae-goo" = 0, "Saar Maoz" = 0,
+  "Maniesh Paul" = 0, "Riaad Moosa" = 0, "Jean-Claude Dreyfus" = 0, "Ludovít Cittel" = 0,
+  "Plantu" = 0, "Tamás Keresztes" = 0, "Jugang Bai" = 0, "Shun'ya Shiraishi" = 0,
+  "Lamman Rucker" = 0, "Ufuk Asar" = 0, "Maxi Iglesias" = 0, "Bjarke Ingels" = 0,
+  "Sahin Irmak" = 0, "Pashan Yilmazel" = 0, "Jurij Zrnec" = 0, "Luon Sovath" = 0,
+  "Kankurô Nakamura" = 0, "Mayor Hüseyin Alioglu" = 0, "Gô Ayano" = 0, "Gediminas Adomaitis" = 0,
+  "Oguzhan Ugur" = 0, "Cheney Chen" = 0, "Hideyoshi Kan" = 0, "Cansel Elcin" = 0,
+  "Tomi Ungerer" = 0, "Gerolamo Alchieri" = 0, "Silambarasan Rajendar" = 0, "Nawat Kulrattanarak" = 0,
+  "Jean-Christophe Folly" = 0, "Rinal Mukhametov" = 0, "Maurício Chagas" = 0, "Moisés Suárez" = 0, "Jonno Roberts" = 0, "Raghava Lawrence" = 0, "Tôri Matsuzaka" = 0,
+  "Irshaad Ally" = 0, "Martins Kalita" = 0, "Fela Kuti" = 0, "G.V. Prakash Kumar" = 0,
+  "Niek Roozen" = 0, "Gang Chen" = 0, "Yôsuke Eguchi" = 0, "Uccio De Santis" = 0,
+  "Serhiy Stepansky" = 0, "Kambuzia Partovi" = 0, "Kari Hietalahti" = 0, "Gökhan Yikilkan" = 0,
+  "Gorka Otxoa" = 0, "Aleksas Kazanavicius" = 0, "Samuli Edelmann" = 0, "Ji Il-joo" = 0,
+  "Lauri Tilkanen" = 0, "Hidetaka Yoshioka" = 0, "Jirí Mádl" = 0, "Quartus de Wet" = 0,
+  "Cheuk Man Au" = 0, "Avicii" = 0, "Gheorghe Ifrim" = 0, "Serban Lazarovici" = 0,
+  "Sunny Singh" = 0, "Safak Sezer" = 0, "Gergely Blahó" = 0, "Sundar C." = 0,
+  "Chun-Him Lau" = 0, "Joseba Astarbe" = 0, "Amrinder Gill" = 0, "Hoze Meléndez" = 0,
+  "Léo-Paul Salmain" = 0, "Gurmeet Choudhary" = 0, "Kai-Chi Liu" = 0, "Csaba Pindroch" = 0,
+  "Gulshan Devaiah" = 0, "Ryô Nishikido" = 0, "Panja Vaisshnav Tej" = 0, "Odysseas Papaspiliopoulos" = 0,
+  "Reinout Scholten van Aschat" = 0, "Dafhyd Flynn" = 0, "Arnout Balis" = 0, "Tchaka O'Hara" = 0,
+  "Ji Hyun-woo" = 0, "Steef de Bot" = 0, "Pugazh" = 0, "Hong-Chi Lee" = 0,
+  "Prateik Patil Babbar" = 0, "Gippy Grewal" = 0, "Vachirawit Chivaaree" = 0, "Mahsun Karaca" = 0,
+  "Tansu Tunçel" = 0, "Néstor Guzzini" = 0, "Gábor Reisz" = 0, "Cezary Pazura" = 0,
+  "Jirí Machácek" = 0, "Naga Shaurya" = 0, "Atthaphan Phunsawat" = 0, "Samian" = 0,
+  "Stanislas Merhar" = 0, "Kagiso Lediga" = 0, "Jirí Langmajer" = 0, "Necati Sasmaz" = 0,
+  "Ufuk Bayraktar" = 0, "Teemu Selänne" = 0, "Yûsuke Iseya" = 0, "Soma Santoki" = 0,
+  "Seo Hyun-woo" = 0, "Riton Liebman" = 0, "Günther Maria Halmer" = 0, "Václav Vydra" = 0,
+  "Björn Borg" = 0, "Yun Je-mun" = 0, "Ogie Banks" = 0, "Shafaat Ali" = 0,
+  "Shahkrit Yamnarm" = 0, "Naga Chaitanya Akkineni" = 0, "Ilker Ayrik" = 0, "Blagoj Veselinov" = 0,
+  "Dharmendra" = 0, "Gholam Nasir" = 0, "Kay Kay Menon" = 0, "Piti Campos" = 0,
+  "Kuranosuke Sasaki" = 0, "Arifin Shuvoo" = 0, "Filipp Yankovskiy" = 0, "Hynek Cermák" = 0,
+  "Pippo Delbono" = 0, "Nandamuri Balakrishna" = 0, "Atsuhiro Inukai" = 0, "Sharwanand" = 0,
+  "Heino Ferch" = 0, "Karel Roden" = 0, "Martti Suosalo" = 0, "Ammy Virk" = 0,
+  "Feyyaz Duman" = 0, "Thodoris Atheridis" = 0, "Moby" = 0, "Bjørn Floberg" = 0,
+  "Çetin Altay" = 0, "Go Kyung-pyo" = 0, "Pyotr Mamonov" = 0, "Slaven Doslo" = 0, "Sérgio Praia" = 0,
+  "Ji Soo" = 0, "Im Si-wan" = 0, "Renátó Olasz" = 0, "Tsahi Halevi" = 0,
+  "Sigurður Hjartarson" = 0, "S.J. Suryah" = 0, "Brenock O'Connor" = 0, "Sivakarthikeyan" = 0,
+  "Nadech Kugimiya" = 0, "Airas Alban" = 0, "Jinpa" = 0, "Takahide Hori" = 0,
+  "Jayam Ravi" = 0, "Zijian Dong" = 0, "Pentatonix" = 0, "Sevket Çoruh" = 0,
+  "Tangaroa Te Ariki" = 0, "Jussi Vatanen" = 0, "Vojtech Dyk" = 0, "Gonçalo Waddington" = 0,
+  "Nikita Ost" = 0, "Haralan Alexandrov" = 0, "Seiyô Uchino" = 0, "Pertti Kurikka" = 0,
+  "Volodymyr Zelenskyy" = 0, "Riadh Belaïche" = 0, "Peppe Servillo" = 0, "Honglei Sun" = 0,
+  "V.G. Alexander" = 0, "Nani" = 0, "Petri Poikolainen" = 0, "Shûichi Ikeda" = 0,
+  "Yôsuke Akimoto" = 0, "Abatutu" = 0, "Emílio Orciollo Netto" = 0, "Tarusuke Shingaki" = 0,
+  "Jayasurya" = 0, "Vicenç Altaió" = 0, "Shôta Iida" = 0, "Xosé A. Touriñán" = 0,
+  "Vuyo Dabula" = 0, "Gennadiy Khazanov" = 0, "Jean-Carl Boucher" = 0, "Louis-José Houde" = 0,
+  "Banksy" = 0, "Djédjé Apali" = 0, "Gürgen Öz" = 0, "Cho Jin-woong" = 0,
+  "Kwak Do-won" = 0, "Vadik Korolyov" = 0, "Lourenço Ortigão" = 0, "Unax Ugalde" = 0,
+  "Charly Hübner" = 0, "Ercan Kesal" = 0, "Mx Justin Vivian Bond" = 0, "Özgürcan Cevik" = 0,
+  "Ka-Tung Lam" = 0, "McCaul Lombardi" = 0, "Jafiey" = 0, "Jiiva" = 0,
+  "Tuncel Kurtiz" = 0, "Yuri Kolokolnikov" = 0, "Yuchang Peng" = 0, "Ischac Hiskiya" = 0,
+  "Alican Akman" = 0, "Oguzhan Koç" = 0, "Cauã Reymond" = 0, "Ice-T" = 0, "Ahn Jae-hong" = 0,
+  "Seye Adelekan" = 0, "Temuera Morrison" = 0, "Seán T. Ó Meallaigh" = 0, "Nobunaga Shimazaki" = 0,
+  "Erdal Besikçioglu" = 0, "Yuichi Ishii" = 0, "Yu-Kai Teng" = 0, "Ashin Wirathu" = 0,
+  "Irakli Kvirikadze" = 0, "Çaglar Çorumlu" = 0, "Ginger Baker" = 0, "Akshaye Khanna" = 0,
+  "Kaoru Kobayashi" = 0, "Libero De Rienzo" = 0, "Tasuku Nagaoka" = 0, "Arié Alimi" = 0,
+  "Yilong Zhu" = 0, "Zoltán Fenyvesi" = 0, "Shin'ichi Tsutsumi" = 0, "Seung-Bum Hong" = 0,
+  "Akkineni Nageswara Rao" = 0, "Tewfik Jallab" = 0, "Sharman Joshi" = 0, "J. David Brimmer" = 0,
+  "Helge Schneider" = 0, "Arya" = 0, "Kwak Si-yang" = 0, "Chantavit Dhanasevi" = 0,
+  "Pep Guardiola" = 0, "Shiloh Fernandez" = 0, "Léo Campion" = 0, "Burçin Bildik" = 0,
+  "Nivin Pauly" = 0, "Kyrre Haugen Sydness" = 0, "Mosab Hassan Yousef" = 0, "Tôma Ikuta" = 0,
+  "Jandino Asporaat" = 0, "Gijs Scholten van Aschat" = 0, "Kainakary Thankaraj" = 0, "Nuutti Konttinen" = 0,
+  "Olli Dittrich" = 0, "Wall Javier" = 0, "Cook" = 0, "Joséphine de Meaux" = 0,
+  "Jôji Abe" = 0, "Yudhveer Bakoliya" = 0, "Salva Reina" = 0, "Tommi Korpela" = 0,
+  "Maz Jobrani" = 0, "Baotian Li" = 0, "Antti Litja" = 0, "Mammootty" = 0,
+  "Nobutoshi Canna" = 0, "Sükrü Özyildiz" = 0, "Oka Antara" = 0, "Dayo Wong" = 0,
+  "Joo Won" = 0, "Olgun Simsek" = 0, "Shadab Kamal" = 0, "Nagarjuna Akkineni" = 0,
+  "Júlio Andrade" = 0, "Irandhir Santos" = 0, "Zinédine Zidane" = 0,
+  "H.R. Giger" = 0, "Toni Kroos" = 0, "Soubin Shahir" = 0, "Kentucker Audley" = 0,
+  "Yuri Lowenthal" = 0, "Lamorne Morris" = 0, "Zafer Algöz" = 0, "Sunny Deol" = 0, "Rüdiger Suchsland" = 0, "Sin Dong-ryeok" = 0, "Oto Brantevics" = 0, "Valter Skarsgård" = 0, 
+  "Merab Ninidze" = 0, "Yongzhong Chen" = 0, "Wasabi Mizuta" = 0, "Kida Khodr Ramadan" = 0, 
+  "Song Boo-gun" = 0, "Dulquer Salmaan" = 0, "Marc-Uwe Kling" = 0, "Aarón Aguilar" = 0, 
+  "Kazunari Ninomiya" = 0, "Kappei Yamaguchi" = 0, "Suriya" = 0, "Devid Striesow" = 0, 
+  "Noé Hernández" = 0, "Talu Wang" = 0, "Marin Grigore" = 0, "Allu Arjun" = 0, 
+  "Ami Ayalon" = 0, "Germano Lanzoni" = 0, "Usain Bolt" = 0, "Ingvar Sigurdsson" = 0, 
+  "Vebjørn Enger" = 0, "Cantante" = 0, "Huang Bo" = 0, "'Freeway' Ricky Ross" = 0, 
+  "Mungau Dain" = 0, "Germán Baudino" = 0, "Karthi" = 0, "Nijirô Murakami" = 0, 
+  "Haoran Liu" = 0, "Rana Daggubati" = 0, "Ai Weiwei" = 0, "Jürgen Prochnow" = 0, 
+  "Ireneusz Czop" = 0, "Pigmalion Dadakaridis" = 0, "Paddy Considine" = 0, "Piolo Pascual" = 0, 
+  "Mino Abbacuccio" = 0, "Lello Arena" = 0, "Kang-sheng Lee" = 0, "Korkmaz Arslan" = 0, 
+  "Skylan Brooks" = 0, "Dalip Sondhi" = 0, "Z. Charles Bolton" = 0, "Welket Bungué" = 0, 
+  "Engin Akyürek" = 0, "Kelsey Grammer" = 0, "Amadey" = 0, "A.J. Simmons" = 0, 
+  "András Sütö" = 0, "Csaba Krisztik" = 0, "Märt Avandi" = 0, "Sido" = 0, 
+  "Louis-Do de Lencquesaing" = 0, "Ciccio Mira" = 0, "Suet Lam" = 0, "Thorvaldur Kristjansson" = 0, 
+  "Eneko Sagardoy" = 0, "Miroslaw Haniszewski" = 0, "Thimotée Robart" = 0, "Tasuku Hatanaka" = 0, 
+  "Snoop Dogg" = 0, "Serhan Ergören" = 0, "Àlex Monner" = 0, "Jianbin Chen" = 0, 
+  "Haimer Leal" = 0, "Mickaël Jachimiak-Duffner" = 0, "Fedja van Huêt" = 0, "Océan" = 0, 
+  "Meng-Po Fu" = 0, "Go Soo" = 0, "Jessie James Grelle" = 0, "Semyon Serzin" = 0, 
+  "Eltayef Dhaoui" = 0, "Ken'ichi Suzumura" = 0, "Sitthiphon Disamoe" = 0, "Lodo Guenzi" = 0, 
+  "Zhan Xiao" = 0, "Pulkit Samrat" = 0, "Francesc Colomer" = 0, "Ludovico Tersigni" = 0, 
+  "Wotan Wilke Möhring" = 0, "Dogu Demirkol" = 0, "Théo Fernandez" = 0, "Zhizhong Huang" = 0, 
+  "Joep Paddenburg" = 0, "J.K. Simmons" = 0, "Aneurin Barnard" = 0, "Ye Liu" = 0, 
+  "Cho Jae-hyun" = 0, "Giampaolo Morelli" = 0, "Won-Jin Ahn" = 0, "50 Cent" = 0, 
+  "Kun Chen" = 0, "Sôsuke Ikematsu" = 0, "Petrônio Gontijo" = 0
+)
+  
+# Apply manual corrections to both gender maps
+for (name in names(manual_corrections)) {
+    correct_gender <- manual_corrections[name]
+    first_name <- unlist(strsplit(name, " "))[1]
+    gender_map_directors[first_name] <- correct_gender
+    gender_map_actors[first_name] <- correct_gender
+}
+
+# Re-map the genders after corrections
+data$director_is_woman <- sapply(data$Director_imdb, map_gender, gender_map = gender_map_directors)
+data$lead_is_woman <- sapply(data$FirstActor_imdb, map_gender, gender_map = gender_map_actors)
+
+```
+
+```{r}
+write.csv(data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes_cleaned.csv", row.names = FALSE)
+
+```

@@ -37,6 +37,7 @@ get_random_user_agent <- function() {
 
 ### Libraries
 
+
 ```{r}
 library(rvest)
 library(httr)
@@ -47,10 +48,13 @@ library(future.apply) # parallel processing
 ```
 
 ```{r}
-data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test_with_bm_cleaned.csv",show_col_types = FALSE)
+data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_with_bm_cleaned.csv",show_col_types = FALSE)
 
 colnames(data)[7] <- "release_year"
+data <- data %>% filter(!(is.na(GrossWorldwide_imdb) & is.na(WorldwideGross_bm)))
+
 ```
+
 
 ### URL function to take into account all the different possibilities in the links
 
@@ -209,6 +213,7 @@ scrape_rotten_tomatoes <- function(title, release_year = NULL, known_variation =
   return(data_scrap)
 }
 
+
 ```
 
 ```{r}
@@ -231,16 +236,21 @@ known_variations <- list(
   "A Silent Voice: The Movie" = "a_silent_voice",
   "The Woman in Black" = "the_woman_in_black_2011",
   "The Wolf of Wall Street" = "the_wolf_of_wall_street_2013",
-  "The SpongeBob Movie: Sponge Out of Water" = "the_spongebob_movie_sponge_out_of_water"
+  "The SpongeBob Movie: Sponge Out of Water" = "the_spongebob_movie_sponge_out_of_water","Your Name
+."="your_name_2017"
 )
 
 # Create a reversion map to revert known variations to their original titles
 reversion_map <- c(
-  "Marvel's the Avengers" = "The Avengers"
+  "Marvel's the Avengers" = "The Avengers",
+  "The Hunger Games: Mockingjay, Part 1
+"="The Hunger Games: Mockingjay - Part 1"
 )
 
-# Example data set to try small number of movies then change to the data
+# Example data set to try small number of movies like 2000 and go running it un this chunks of 2000 util you get to 15576. I did it all in but take too long!
+
 test_movies <- data
+
 # Use parallel processing for scraping
 plan(multisession, workers = 7) # Adjust the number of workers based on your CPU, I have 8 so I put one less
 
@@ -257,14 +267,14 @@ scraped_data <- scraped_data %>%
   mutate(title_rt = ifelse(title_rt %in% names(reversion_map), reversion_map[title_rt], title_rt))
 
 # Join the scraped data back to the original test_movies data
-final_data2 <- left_join(test_movies, scraped_data, by = c("title" = "title_rt"))
- 
+final_data <- left_join(test_movies, scraped_data, by = c("title" = "title_rt"))
+
 ```
 
 ```{r}
 # Save merged data set
-write_csv(final_data2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes_cleaned.csv")
+write_csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes_cleaned.csv")
 
 ```
 
- 
+
