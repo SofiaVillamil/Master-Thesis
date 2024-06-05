@@ -1,0 +1,140 @@
+---
+title: "Data Cleaning"
+author: "Sofia Villamil"
+date: "2024-06-05"
+output: html_document
+---
+
+```{r}
+rm(list = ls())
+```
+
+```{r}
+library(readr)
+library(dplyr)
+library(stringr)
+```
+
+```{r}
+data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes_cleaned.csv", 
+    col_types = cols(release_date = col_character(), 
+        MPAA_imdb = col_character()))
+```
+
+Analyzing the class of the variables
+
+```{r}
+# Get the class of all variables
+variable_classes <- sapply(data, class)
+print(variable_classes)
+
+```
+
+Checking NA's
+
+```{r}
+na_counts <- colSums(is.na(data))
+na_counts
+```
+
+### World Wide Gross
+
+```{r}
+data$WorldwideGross_bm <- as.numeric(gsub("[\\$,]", "", data$WorldwideGross_bm))
+```
+
+```{r}
+data$GrossWorldwide_imdb  <- as.numeric(gsub("[\\$,]", "", data$GrossWorldwide_imdb ))
+```
+
+```{r}
+# We are going to create a new variable with both taking the bigger gross from each
+data$world_wide_gross <- pmax(data$GrossWorldwide_imdb, data$WorldwideGross_bm, na.rm = TRUE)
+
+# if both are NA's
+data$world_wide_gross[is.na(data$GrossWorldwide_imdb) & is.na(data$WorldwideGross_bm)] <- NA
+```
+
+Checked manually if there were issues with the scrapping for most of the movies and there is no information in any of the three sites of gross income so I decided to drop them.
+
+```{r}
+data <- data[!is.na(data$world_wide_gross), ]
+```
+
+### Budget
+
+```{r}
+data$Budget_bm <- as.numeric(gsub("[\\$,]", "", data$Budget_bm))
+```
+
+```{r}
+data$Budget <- pmax(data$Budget_bm, data$budget, na.rm = TRUE)
+
+# if both are NA's or 0
+data$Budget[data$Budget == 0 | is.na(data$Budget_bm) | is.na(data$budget)] <- NA
+
+```
+
+### Duration
+
+```{r}
+# converting the format to minutes
+convert_to_minutes <- function(duration) {
+  parts <- str_match(duration, "(\\d+)h\\s*(\\d+)m")
+  
+  hours_to_minutes <- as.numeric(parts[, 2]) * 60
+  minutes <- as.numeric(parts[, 3])
+  
+  total_minutes <- hours_to_minutes + minutes
+  return(total_minutes)
+}
+
+data$Duration_imdb_numeric <- sapply(data$Duration_imdb, convert_to_minutes)
+
+```
+
+Now we complete the Na's with the other variable for duration of the movie
+
+```{r}
+data$Duration_mov_imdb <- pmax(data$Duration_imdb_numeric, data$runtime, na.rm = TRUE)
+
+# if the running time is 0
+data$Duration_mov_imdb[data$Duration_mov_imdb == 0] <- NA
+
+
+```
+
+### Reviews
+
+There are too many missing values in the rotten scrapping. It is due to the URL that has not a similar structure in all movies. This is why I will get this list of variables in an excel to try and scrap more data in another script.
+
+```{r}
+na_titles <- data %>% 
+  filter(is.na(Title)) %>% 
+  select(title, Title, release_year)
+na_titles
+```
+
+```{r}
+write.csv(na_titles, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/data_na_titles.csv", row.names = FALSE)
+
+```
+
+# Final Data
+
+```{r}
+movies <- data %>% select(
+   title, imdb_id,world_wide_gross,Budget, original_language, production_countries, release_date, MPAA_imdb, Genre_imdb, Duration_mov_imdb, production_companies, 
+   
+   Director_imdb, FirstActor_imdb, SecondActor_imdb, FirstWriter_imdb, SecondWriter_imdb, AwardsAndNominations_imdb, Oscar_Information_imdb, director_is_woman, lead_is_woman,
+   
+   IMDbscore_imdb, critics_score_rt, total_critics_reviews_rt, audience_score_rt, total_audience_reviews_rt, 
+  top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt, TitleReview_imdb, FeatureReview_imdb, 
+  
+)
+```
+
+```{r}
+write.csv(movies, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/data_final", row.names = FALSE)
+
+```
