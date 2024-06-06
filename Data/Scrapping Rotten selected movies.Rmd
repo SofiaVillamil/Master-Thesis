@@ -1,0 +1,268 @@
+---
+title: "Resolver problemas scrapping Rotten"
+author: "Sofia Villamil"
+date: "2024-06-05"
+output: html_document
+---
+
+```{r}
+rm(list = ls())
+```
+
+```{r}
+library(dplyr)
+library(stringr)
+library(readr)
+library(httr)
+library(foreach)
+library(doParallel)
+library(rvest)
+library(purrr)
+library(furrr)
+```
+
+```{r}
+user_agents <- c(
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0"
+)
+
+```
+
+```{r}
+data1 <- read_csv("data_na_titles.csv", show_col_types = FALSE)
+```
+
+```{r}
+# Subset for testing with a certain amount of URLs
+data <- data1[1:10, ]
+```
+
+```{r}
+# Your known variations list
+known_variations <- list(
+  "The Avengers" = "marvels_the_avengers",
+  "Star Wars: The Force Awakens" = "star_wars_episode_vii_the_force_awakens",
+  "Once Upon a Time… in Hollywood" = "once_upon_a_time_in_hollywood",
+  "Birdman or (The Unexpected Virtue of Ignorance)" = "birdman_2014",
+  "Men in Black 3" = "men_in_black_iii",
+  "Kung Fu Panda 2" = "kung_fu_panda_the_kaboom_of_doom",
+  "Pokémon Detective Pikachu" = "pokemon_detective_pikachu",
+  "The Man from U.N.C.L.E." = "the_man_from_uncle",
+  "The 5th Wave" = "the_fifth_wave",
+  "G.I. Joe: Retaliation" = "gi_joe_retaliation",
+  "Les Misérables" = "les_miserables",
+  "The Adjustment Bureau" = "adjustment_bureau",
+  "Gangster Squad" = "gangster_squad_2012",
+  "R.I.P.D." = "ripd",
+  "A Silent Voice: The Movie" = "a_silent_voice",
+  "The Woman in Black" = "the_woman_in_black_2011",
+  "The Wolf of Wall Street" = "the_wolf_of_wall_street_2013",
+  "The SpongeBob Movie: Sponge Out of Water" = "the_spongebob_movie_sponge_out_of_water",
+  "Your Name." = "your_name_2017"
+)
+
+# Function to check if a URL is valid
+is_url_valid <- function(url) {
+  tryCatch({
+    user_agent <- sample(user_agents, 1)
+    response <- HEAD(url, user_agent(user_agent))
+    response$status_code == 200
+  }, error = function(e) {
+    FALSE
+  })
+}
+
+# Function to generate Rotten Tomatoes URL from movie title
+generate_movie_url <- function(movie_title, release_year = NULL, known_variation = NULL) {
+  if (!is.null(known_variation)) {
+    formatted_title <- known_variation
+  } else {
+    movie_title <- str_replace_all(movie_title, "&", "and")
+    movie_title <- str_replace_all(movie_title, "[\\$']", "")
+    formatted_title <- str_to_lower(str_replace_all(movie_title, "[ :.,!?\"-/]", "_"))
+    formatted_title <- str_replace_all(formatted_title, "\\.\\.\\.", "_")
+    formatted_title <- str_replace_all(formatted_title, "__+", "_")
+    formatted_title <- str_replace_all(formatted_title, "_$", "")
+  }
+  
+  base_url <- paste0("https://www.rottentomatoes.com/m/", formatted_title)
+  
+  # Check if the base URL is valid
+  if (is_url_valid(base_url)) {
+    return(base_url)
+  }
+  
+  # Check URLs with appended years
+  years <- 2010:2024
+  possible_urls <- paste0(base_url, "_", years)
+  valid_urls <- possible_urls[sapply(possible_urls, is_url_valid)]
+  
+  if (length(valid_urls) > 0) {
+    return(tail(valid_urls, 1))  # Return the URL with the latest year
+  }
+  
+  return(NA)
+}
+
+# Function to save intermediate results to a CSV file
+save_results <- function(data, file_path) {
+  write.csv(data, file_path, row.names = FALSE)
+}
+
+# Path to save the intermediate results
+file_path <- "generated_urls.csv"
+
+# Initialize an empty data frame to store results
+results <- data.frame(title = character(), generated_url = character(), stringsAsFactors = FALSE)
+
+# Register parallel backend
+num_cores <- detectCores() - 1  # Use one less core than available
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
+
+# Parallel loop through each title, generate URL, and save results incrementally
+results <- foreach(i = 1:nrow(data), .combine = rbind, .packages = c("dplyr", "stringr", "httr")) %dopar% {
+  title <- data$title[i]
+  known_variation <- known_variations[[title]]
+  generated_url <- generate_movie_url(title, known_variation = known_variation)
+  
+  # Return the result as a data frame row
+  data.frame(title = title, generated_url = generated_url, stringsAsFactors = FALSE)
+}
+
+
+# Save the final results
+save_results(results, file_path)
+
+# Stop the cluster
+stopCluster(cl)
+```
+
+```{r}
+results2 <- results[!is.na(results$generated_url), ]
+save_results(results2, file_path)
+```
+
+```{r}
+# Function to extract single text with a fallback to NA
+extract_single_text <- function(node) {
+  if (length(node) == 0) return(NA)
+  html_text(node, trim = TRUE)
+}
+
+# Function to scrape movie data from a given URL
+scrape_movie_data <- function(url) {
+  Sys.sleep(sample(5:10, 1))  # Random sleep between 5 to 10 seconds
+
+  movie_page <- read_html(url)
+  
+  title_rt <- extract_single_text(movie_page %>% html_node(xpath = '//h1[@slot="titleIntro"]//span'))
+  critics_score_rt <- movie_page %>%
+    html_node(xpath = '//rt-button[@slot="criticsScore"]//rt-text') %>%
+    html_text(trim = TRUE) %>%
+    gsub("%", "", .) %>%
+    as.numeric()
+  total_critics_reviews_rt <- movie_page %>%
+    html_node(xpath = '//rt-link[@slot="criticsReviews" and @size="0.75"]') %>%
+    html_text(trim = TRUE) %>%
+    gsub("\\s+Reviews", "", .) %>%
+    gsub(",", "", .) %>%
+    as.numeric()
+  audience_score_rt <- movie_page %>%
+    html_node(xpath = '//rt-button[@slot="audienceScore"]//rt-text') %>%
+    html_text(trim = TRUE) %>%
+    gsub("%", "", .) %>%
+    as.numeric()
+  total_audience_reviews_rt <- movie_page %>%
+    html_node(xpath = '//rt-link[@slot="audienceReviews" and @size="0.75"]') %>%
+    html_text(trim = TRUE) %>%
+    gsub("[^0-9]", "", .) %>%
+    as.numeric()
+  top_critic_review_1_rt <- extract_single_text(movie_page %>% 
+    html_node(xpath = '(//carousel-slider//review-card-critic[@slot="tile"])[1]//rt-text[@slot="content"]'))
+  top_critic_review_2_rt <- extract_single_text(movie_page %>% 
+    html_node(xpath = '(//carousel-slider//review-card-critic[@slot="tile"])[2]//rt-text[@slot="content"]'))
+  audience_review_1_rt <- extract_single_text(movie_page %>% 
+    html_node(xpath = '(//carousel-slider//review-card-audience[@slot="tile"])[1]//rt-text[@slot="content"]'))
+  audience_review_2_rt <- extract_single_text(movie_page %>% 
+    html_node(xpath = '(//carousel-slider//review-card-audience[@slot="tile"])[2]//rt-text[@slot="content"]'))
+
+  data.frame(
+    title_rt = title_rt,
+    Title = title_rt,
+    critics_score_rt = critics_score_rt,
+    total_critics_reviews_rt = total_critics_reviews_rt,
+    audience_score_rt = audience_score_rt,
+    total_audience_reviews_rt = total_audience_reviews_rt,
+    top_critic_review_1_rt = top_critic_review_1_rt,
+    top_critic_review_2_rt = top_critic_review_2_rt,
+    audience_review_1_rt = audience_review_1_rt,
+    audience_review_2_rt = audience_review_2_rt,
+    stringsAsFactors = FALSE
+  )
+}
+
+# Load the results2 dataset
+test <- results2[1:10, ]
+# Parallel processing setup
+plan(multisession, workers = 7)  # Adjust the number of workers as needed
+
+# Scraping all URLs
+movies_data <- test %>%
+  mutate(movie_data = future_map(generated_url, safely(scrape_movie_data), .options = furrr_options(seed = TRUE))) %>%
+  mutate(movie_data = map(movie_data, "result"))
+
+# Combining all scraped data into a single data frame
+combined_data <- bind_rows(movies_data$movie_data)
+
+# Save the combined data to a CSV file 
+write.csv(combined_data, "scraped_movie_data.csv", row.names = FALSE)
+```
+
+### Joining the data attained with the final data set.
+
+```{r}
+data_final <- read_csv("data_final.csv",show_col_types = FALSE)
+```
+
+```{r}
+combined_data$title_generated_urls <- results2$title
+```
+
+```{r}
+merged_data <- left_join(data_final, combined_data, by = c("title" = "title_generated_urls"))
+
+```
+
+```{r}
+merged_data <- merged_data %>%
+  mutate(
+    critics_score_rt = coalesce(critics_score_rt.x, critics_score_rt.y),
+    total_critics_reviews_rt = coalesce(total_critics_reviews_rt.x, total_critics_reviews_rt.y),
+    audience_score_rt = coalesce(audience_score_rt.x, audience_score_rt.y),
+    total_audience_reviews_rt = coalesce(total_audience_reviews_rt.x, total_audience_reviews_rt.y),
+    top_critic_review_1_rt = coalesce(top_critic_review_1_rt.x, top_critic_review_1_rt.y),
+    top_critic_review_2_rt = coalesce(top_critic_review_2_rt.x, top_critic_review_2_rt.y),
+    audience_review_1_rt = coalesce(audience_review_1_rt.x, audience_review_1_rt.y),
+    audience_review_2_rt = coalesce(audience_review_2_rt.x, audience_review_2_rt.y)
+  ) %>%
+  select(-ends_with(".x"), -ends_with(".y"))
+
+
+```
+
+```{r}
+write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/data_final_2.csv",row.names = FALSE)
+
+```

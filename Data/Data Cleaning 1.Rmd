@@ -13,6 +13,8 @@ rm(list = ls())
 library(readr)
 library(dplyr)
 library(stringr)
+library(tidyr)
+
 ```
 
 ```{r}
@@ -124,9 +126,9 @@ write.csv(na_titles, "C:/Users/sofia/Documents/Documentos/Master Computational S
 
 ```{r}
 movies <- data %>% select(
-   title, imdb_id,world_wide_gross,Budget, original_language, production_countries, release_date, MPAA_imdb, Genre_imdb, Duration_mov_imdb, production_companies, 
+   Title, title, imdb_id,world_wide_gross,Budget, original_language, production_countries, release_date, MPAA_imdb, Genre_imdb, Duration_mov_imdb, production_companies, 
    
-   Director_imdb, FirstActor_imdb, SecondActor_imdb, FirstWriter_imdb, SecondWriter_imdb, AwardsAndNominations_imdb, Oscar_Information_imdb, director_is_woman, lead_is_woman,
+   Director_imdb, FirstActor_imdb, SecondActor_imdb, FirstWriter_imdb, AwardsAndNominations_imdb, Oscar_Information_imdb, director_is_woman, lead_is_woman,
    
    IMDbscore_imdb, critics_score_rt, total_critics_reviews_rt, audience_score_rt, total_audience_reviews_rt, 
   top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt, TitleReview_imdb, FeatureReview_imdb, 
@@ -136,5 +138,28 @@ movies <- data %>% select(
 
 ```{r}
 write.csv(movies, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/data_final.csv",row.names = FALSE)
+
+```
+
+Crear data set pequeños para usarlos en el scrapping the python.
+
+```{r}
+movies2 <- data %>% select(FirstActor_imdb,title)
+movies2 <- movies2 %>% distinct(FirstActor_imdb, .keep_all = TRUE)
+write.csv(movies2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/data_final_actores.csv",row.names = FALSE)
+
+```
+
+```{r}
+# Seleccionar las columnas de interés
+movies3 <- data %>% select(FirstActor_imdb, SecondActor_imdb)
+
+# Combinar todas las columnas en una sola columna
+nombres <- movies3 %>%
+  pivot_longer(cols = everything(), names_to = "type", values_to = "nombre") %>%
+  select(nombre) %>%
+  distinct()
+
+write.csv(nombres, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/data_final_actores_full.csv",row.names = FALSE)
 
 ```
