@@ -1,9 +1,13 @@
 ---
-title: "Resolver problemas scrapping Rotten"
+title: "Scrapping Again Rotten Tomatoes for specific complicated URL's"
 author: "Sofia Villamil"
 date: "2024-06-05"
 output: html_document
 ---
+
+### SCRAPPING FOR ROTTEN TOMATOES AGAIN
+
+We are going to scrap again for the specific url's found to be NA's in the previous data set. The objective is to attain more data and reduce the missing values for reviews
 
 ```{r}
 rm(list = ls())
@@ -20,6 +24,8 @@ library(rvest)
 library(purrr)
 library(furrr)
 ```
+
+We are using different user agents in order to not compromise the page.
 
 ```{r}
 user_agents <- c(
@@ -39,8 +45,10 @@ user_agents <- c(
 
 ```
 
+This is the data set attained in the previous code for the URL's that were not found.
+
 ```{r}
-data1 <- read_csv("data_na_titles.csv", show_col_types = FALSE)
+data1 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_na_titles.csv", show_col_types = FALSE)
 ```
 
 ```{r}
@@ -48,8 +56,11 @@ data1 <- read_csv("data_na_titles.csv", show_col_types = FALSE)
 data <- data1[1:10, ]
 ```
 
+#### Obtaining URL's
+
+We are going to recycle some of the code of the previous scrapping. However, we will change a little the approach by first attaining the URL's, saving them and then scrapping the data.
+
 ```{r}
-# Your known variations list
 known_variations <- list(
   "The Avengers" = "marvels_the_avengers",
   "Star Wars: The Force Awakens" = "star_wars_episode_vii_the_force_awakens",
@@ -83,7 +94,7 @@ is_url_valid <- function(url) {
   })
 }
 
-# Function to generate Rotten Tomatoes URL from movie title
+# Function to generate the Rotten Tomatoes URL from this sepecific movies
 generate_movie_url <- function(movie_title, release_year = NULL, known_variation = NULL) {
   if (!is.null(known_variation)) {
     formatted_title <- known_variation
@@ -98,46 +109,44 @@ generate_movie_url <- function(movie_title, release_year = NULL, known_variation
   
   base_url <- paste0("https://www.rottentomatoes.com/m/", formatted_title)
   
-  # Check if the base URL is valid
   if (is_url_valid(base_url)) {
     return(base_url)
   }
   
-  # Check URLs with appended years
+  # Check URLs with appended years as some URL's have the year as suffix
   years <- 2010:2024
   possible_urls <- paste0(base_url, "_", years)
   valid_urls <- possible_urls[sapply(possible_urls, is_url_valid)]
   
   if (length(valid_urls) > 0) {
-    return(tail(valid_urls, 1))  # Return the URL with the latest year
+    return(tail(valid_urls, 1))  # Return the URL with the latest year as this are the movies we will use in the analysis.
   }
   
   return(NA)
 }
 
-# Function to save intermediate results to a CSV file
+# Function to save intermediate results to a CSV file. To have a backup
 save_results <- function(data, file_path) {
   write.csv(data, file_path, row.names = FALSE)
 }
 
 # Path to save the intermediate results
-file_path <- "generated_urls.csv"
+file_path <- "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/generated_urls.csv"
 
-# Initialize an empty data frame to store results
+# empty data frame to store results
 results <- data.frame(title = character(), generated_url = character(), stringsAsFactors = FALSE)
 
 # Register parallel backend
-num_cores <- detectCores() - 1  # Use one less core than available
+num_cores <- detectCores() - 1  # Use one less core than available, I have 8 so i use 7. But this function checks it!
 cl <- makeCluster(num_cores)
 registerDoParallel(cl)
 
-# Parallel loop through each title, generate URL, and save results incrementally
+# Parallel loop through each title, generate URL, and save results incrementally to have a back up
 results <- foreach(i = 1:nrow(data), .combine = rbind, .packages = c("dplyr", "stringr", "httr")) %dopar% {
   title <- data$title[i]
   known_variation <- known_variations[[title]]
   generated_url <- generate_movie_url(title, known_variation = known_variation)
   
-  # Return the result as a data frame row
   data.frame(title = title, generated_url = generated_url, stringsAsFactors = FALSE)
 }
 
@@ -149,13 +158,17 @@ save_results(results, file_path)
 stopCluster(cl)
 ```
 
+Some Movies where not found in the page so I will eliminate them from the data set to have less movies to search.
+
 ```{r}
 results2 <- results[!is.na(results$generated_url), ]
 save_results(results2, file_path)
 ```
 
+#### Scrapping the data
+
 ```{r}
-# Function to extract single text with a fallback to NA
+# Function to extract single text 
 extract_single_text <- function(node) {
   if (length(node) == 0) return(NA)
   html_text(node, trim = TRUE)
@@ -163,7 +176,7 @@ extract_single_text <- function(node) {
 
 # Function to scrape movie data from a given URL
 scrape_movie_data <- function(url) {
-  Sys.sleep(sample(5:10, 1))  # Random sleep between 5 to 10 seconds
+  Sys.sleep(sample(5:10, 1))
 
   movie_page <- read_html(url)
   
@@ -173,28 +186,35 @@ scrape_movie_data <- function(url) {
     html_text(trim = TRUE) %>%
     gsub("%", "", .) %>%
     as.numeric()
+
   total_critics_reviews_rt <- movie_page %>%
     html_node(xpath = '//rt-link[@slot="criticsReviews" and @size="0.75"]') %>%
     html_text(trim = TRUE) %>%
     gsub("\\s+Reviews", "", .) %>%
     gsub(",", "", .) %>%
     as.numeric()
+
   audience_score_rt <- movie_page %>%
     html_node(xpath = '//rt-button[@slot="audienceScore"]//rt-text') %>%
     html_text(trim = TRUE) %>%
     gsub("%", "", .) %>%
     as.numeric()
+  
   total_audience_reviews_rt <- movie_page %>%
     html_node(xpath = '//rt-link[@slot="audienceReviews" and @size="0.75"]') %>%
     html_text(trim = TRUE) %>%
     gsub("[^0-9]", "", .) %>%
     as.numeric()
+  
   top_critic_review_1_rt <- extract_single_text(movie_page %>% 
     html_node(xpath = '(//carousel-slider//review-card-critic[@slot="tile"])[1]//rt-text[@slot="content"]'))
+
   top_critic_review_2_rt <- extract_single_text(movie_page %>% 
     html_node(xpath = '(//carousel-slider//review-card-critic[@slot="tile"])[2]//rt-text[@slot="content"]'))
+  
   audience_review_1_rt <- extract_single_text(movie_page %>% 
     html_node(xpath = '(//carousel-slider//review-card-audience[@slot="tile"])[1]//rt-text[@slot="content"]'))
+  
   audience_review_2_rt <- extract_single_text(movie_page %>% 
     html_node(xpath = '(//carousel-slider//review-card-audience[@slot="tile"])[2]//rt-text[@slot="content"]'))
 
@@ -213,9 +233,10 @@ scrape_movie_data <- function(url) {
   )
 }
 
-# Load the results2 dataset
+# Select the number URL's we want to scrap
 test <- results2[1:10, ]
-# Parallel processing setup
+
+# Parallel processing setup to make the procces faster
 plan(multisession, workers = 7)  # Adjust the number of workers as needed
 
 # Scraping all URLs
@@ -223,27 +244,33 @@ movies_data <- test %>%
   mutate(movie_data = future_map(generated_url, safely(scrape_movie_data), .options = furrr_options(seed = TRUE))) %>%
   mutate(movie_data = map(movie_data, "result"))
 
-# Combining all scraped data into a single data frame
+# Combining all
 combined_data <- bind_rows(movies_data$movie_data)
 
-# Save the combined data to a CSV file 
-write.csv(combined_data, "scraped_movie_data.csv", row.names = FALSE)
+# Save the combined data to a CSV file to have a back up
+write.csv(combined_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/scraped_movie_data.csv", row.names = FALSE)
 ```
 
-### Joining the data attained with the final data set.
+### Joining the data attained with the final data set
 
 ```{r}
-data_final <- read_csv("data_final.csv",show_col_types = FALSE)
+data_final <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final.csv",show_col_types = FALSE)
 ```
+
+The titles in Rotten Tomatoes do not mach the ones in data final. So we fix it by doing this as the order was not disturbed.
 
 ```{r}
 combined_data$title_generated_urls <- results2$title
 ```
 
+I checked and every title seems to be corrected, so we can merge now.
+
 ```{r}
 merged_data <- left_join(data_final, combined_data, by = c("title" = "title_generated_urls"))
 
 ```
+
+**Fixing the extra columns generated by the merge**
 
 ```{r}
 merged_data <- merged_data %>%
@@ -263,6 +290,6 @@ merged_data <- merged_data %>%
 ```
 
 ```{r}
-write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/data_final_2.csv",row.names = FALSE)
+write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_3.csv",row.names = FALSE)
 
 ```

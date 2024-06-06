@@ -16,7 +16,7 @@ library(genderdata)
 ```
 
 ```{r}
-data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes_cleaned.csv", 
+data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_test_dataset_with_rotten_tomatoes_cleaned.csv", 
     col_types = cols(release_date = col_character(), 
         MPAA_imdb = col_character()))
 ```
@@ -24,7 +24,7 @@ data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Socia
 #### Gender of the individuals involved in the movie
 
 ```{r}
-# Function to get the gender of the individuals using multiple methods
+# Function to get the gender of the individuals using multiple methods from the libraries
 get_gender <- function(names) {
     first_names <- sapply(strsplit(names, " "), `[`, 1)
     results <- gender(first_names, method = "ssa")
@@ -34,7 +34,7 @@ get_gender <- function(names) {
     return(gender_map)
 }
 
-# Extract unique names from the specified columns
+# Extract unique names from the specified columns to remove duplicates
 unique_directors <- unique(data$Director_imdb)
 unique_actors <- unique(data$FirstActor_imdb)
 
@@ -60,7 +60,7 @@ female_actors <- unique(data$FirstActor_imdb[data$lead_is_woman == 1 | is.na(dat
 ```
 
 ```{r}
-# they were corrected using the chat so all names are verified to be correct.
+# they were corrected using the chat so I double check just in case
 manual_corrections <- c(
   "Jamie Foxx"= 0, "BTS"= 0, "One Direction" =0,
   "Taika Waititi" = 0, "Peyton Reed" = 0, "J.J. Abrams" = 0, "Baz Luhrmann" = 0,
@@ -392,7 +392,7 @@ manual_corrections <- c(
   "Kun Chen" = 0, "Sôsuke Ikematsu" = 0, "Petrônio Gontijo" = 0
 )
   
-# Apply manual corrections to both gender maps
+# Applying the manual corrections gathered 
 for (name in names(manual_corrections)) {
     correct_gender <- manual_corrections[name]
     first_name <- unlist(strsplit(name, " "))[1]
@@ -400,13 +400,13 @@ for (name in names(manual_corrections)) {
     gender_map_actors[first_name] <- correct_gender
 }
 
-# Re-map the genders after corrections
+# After corrections
 data$director_is_woman <- sapply(data$Director_imdb, map_gender, gender_map = gender_map_directors)
 data$lead_is_woman <- sapply(data$FirstActor_imdb, map_gender, gender_map = gender_map_actors)
 
 ```
 
 ```{r}
-write.csv(data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_test_dataset_with_rotten_tomatoes_cleaned.csv", row.names = FALSE)
+write.csv(data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_2.csv", row.names = FALSE)
 
 ```

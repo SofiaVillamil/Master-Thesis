@@ -111,16 +111,16 @@ scrape_imdb <- function(imdb_id, index) {
 }
  
 # 1 million movie data set from keggel that is already filtered 
-movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/TMDB_movie_dataset_v11_1mill_filter.csv", show_col_types = FALSE)
+movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping Part 1/TMDB_movie_dataset_v11_1mill_filter.csv", show_col_types = FALSE)
  
 movies <- movies %>%
   group_by(title) %>%
   filter(year == min(year)) %>%
   ungroup()
-# Select the amount of movies to scrap in 8 hours
+# Selecting the amount of movies to scrap in 8 hours
 test_movies <- head(movies, 55000) 
 
-# Initialize an empty data frame to store results to make less errors
+# empty data frame to store results to make less errors
 scraped_data <- data.frame()
 
 # Use parallel processing for scraping because it takes to long so this will fasten the scrapping process
@@ -145,6 +145,6 @@ scraped_data <- scraped_data %>%
 final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
 
 # Save the final merged dataset
-write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Data/movies_final_dataset_test.csv", row.names = FALSE)
+write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test.csv", row.names = FALSE)
 
 ```

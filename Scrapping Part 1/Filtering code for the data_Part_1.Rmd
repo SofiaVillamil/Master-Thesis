@@ -13,7 +13,7 @@ rm(list = ls())
 library(readr)
 library(dplyr)
 
-movies <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/TMDB_movie_dataset_v11_1mill.csv", 
+movies <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping Part 1/TMDB_movie_dataset_v11_1mill.csv", 
     delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
 
 # Some columns with NA's where generated
@@ -25,7 +25,7 @@ filtered_movies <- movies_cleaned %>%
   filter(year > 2011 & year < 2024)
 
 # Save the filtered dataset to a CSV file
-write.csv(filtered_movies, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping/TMDB_movie_dataset_v11_1mill_filter.csv", row.names = FALSE)
+write.csv(filtered_movies, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping Part 1/TMDB_movie_dataset_v11_1mill_filter.csv", row.names = FALSE)
 
 ```
 
