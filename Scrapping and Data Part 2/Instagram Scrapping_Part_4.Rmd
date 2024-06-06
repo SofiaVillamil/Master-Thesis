@@ -19,6 +19,7 @@ library(readr)
 library(writexl)
 library(dplyr)
 library(tidyr)
+library(openxlsx)
 
 ```
 
@@ -110,6 +111,7 @@ write.csv(data_filtered_3, "C:/Users/sofia/Documents/Documentos/Master Computati
 ```{r}
 movies2 <- data_filtered_3 %>% select(FirstActor_imdb,imdb_id)
 movies2 <- movies2 %>% distinct(FirstActor_imdb, .keep_all = TRUE)
+
 write.csv(movies2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_actores.csv",row.names = FALSE)
 
 ```
@@ -119,10 +121,12 @@ write.csv(movies2, "C:/Users/sofia/Documents/Documentos/Master Computational Soc
 movies3 <- data_filtered_3 %>% select(imdb_id,FirstActor_imdb, SecondActor_imdb)
 
 nombres <- movies3 %>%
-  pivot_longer(cols = -imdb_id, names_to = "type", values_to = "nombre") %>%
-  select(imdb_id, nombre) %>%
-  distinct()
+  pivot_longer(cols = -imdb_id, names_to = "type", values_to = "name") %>%
+  select(imdb_id, name) 
 
-write.csv(nombres, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_actores_full.csv",row.names = FALSE)
+# eliminate duplicated names
+nombres <- nombres[!duplicated(nombres$name), ]
+
+write.xlsx(nombres,"C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_actores_full.xlsx",row.Names = FALSE)
 
 ```
