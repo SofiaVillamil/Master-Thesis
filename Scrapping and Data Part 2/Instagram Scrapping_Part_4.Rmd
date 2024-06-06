@@ -1,0 +1,128 @@
+---
+title: "Instagram Scrapping_Part_4"
+author: "Sofia Villamil"
+date: "2024-06-06"
+output: html_document
+---
+
+### STARTING WITH INSTAGRAM SCRAPPING
+
+We will attain a variable for the follower that each actor has. However, first to reduce the scrapping amount we will clean the data eliminating the movies with a lot of NA's.
+
+```{r}
+rm(list = ls())
+
+```
+
+```{r}
+library(readr)
+library(writexl)
+library(dplyr)
+library(tidyr)
+
+```
+
+```{r}
+data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_3.csv", show_col_types = FALSE)
+
+```
+
+### First we look for duplicates.
+
+```{r}
+# Identify duplicated titles
+duplicates <- data[duplicated(data$imdb_id) | duplicated(data$imdb_id, fromLast = TRUE), ]
+data <- data[!duplicated(data$imdb_id), ]
+```
+
+### Now we look at the Na's
+
+```{r}
+data_filtered <- data[ , !(names(data) %in% c("FirstWriter_imdb", "production_countries"))]
+
+```
+
+```{r}
+data_filtered <- data_filtered[!is.na(data_filtered$"IMDbscore_imdb"), ]
+data_filtered <- data_filtered[!is.na(data_filtered$"Duration_mov_imdb"), ]
+data_filtered <- data_filtered[!is.na(data_filtered$"production_companies"), ]
+```
+
+```{r}
+# Define the columns to check for NA values
+columns_to_check_1 <- c("FeatureReview_imdb", 
+                      "top_critic_review_1_rt", "top_critic_review_2_rt", 
+                      "audience_review_1_rt", "audience_review_2_rt")
+
+# Remove rows where all specified columns are NA
+data_filtered_2 <- data_filtered[rowSums(is.na(data_filtered[, columns_to_check_1])) != length(columns_to_check_1), ]
+
+```
+
+```{r}
+columns_to_check_2 <- c("critics_score_rt", "audience_score_rt")
+
+data_filtered_3 <- data_filtered_2[rowSums(is.na(data_filtered_2[, columns_to_check_2])) != length(columns_to_check_2), ]
+```
+
+```{r}
+na_counts <- colSums(is.na(data_filtered_3))
+na_counts
+```
+
+### Changes
+
+```{r}
+# Filling one observation that was missing
+data_filtered_3[data_filtered_3$imdb_id == "tt6449410", "Genre_imdb"] <- "Comedy" # found it in rotten tomatoes as in imdb there was no info
+```
+
+```{r}
+# there are movies who do not have actors as they are animated or documentaries. So the director is going to be the actor.
+
+na_condition <- is.na(data_filtered_3$FirstActor_imdb) & is.na(data_filtered_3$SecondActor_imdb)
+
+# Fill FirstActor_imdb and SecondActor_imdb with Director_imdb if both are NA
+data_filtered_3$FirstActor_imdb[na_condition] <- data_filtered_3$Director_imdb[na_condition]
+data_filtered_3$SecondActor_imdb[na_condition] <- data_filtered_3$Director_imdb[na_condition]
+
+# Some movies have only one actor
+data_filtered_3$SecondActor_imdb[is.na(data_filtered_3$SecondActor_imdb)] <- "None"
+
+```
+
+```{r}
+# Now for the MPAA, some are not rated.
+# Replace NA values with "Not Rated"
+data_filtered_3$MPAA_imdb[is.na(data_filtered_3$MPAA_imdb)] <- "Not Rated"
+
+# Replace "Unrated" values with "Not Rated"
+data_filtered_3$MPAA_imdb[data_filtered_3$MPAA_imdb == "Unrated"] <- "Not Rated"
+```
+
+```{r}
+write.csv(data_filtered_3, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_4.csv",row.names = FALSE)
+
+```
+
+### Data set samples for Scrapping in Instagram
+
+```{r}
+movies2 <- data_filtered_3 %>% select(FirstActor_imdb,imdb_id)
+movies2 <- movies2 %>% distinct(FirstActor_imdb, .keep_all = TRUE)
+write.csv(movies2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_actores.csv",row.names = FALSE)
+
+```
+
+```{r}
+# Selecting now a data set with all the actors
+movies3 <- data_filtered_3 %>% select(imdb_id,FirstActor_imdb, SecondActor_imdb)
+
+nombres <- movies3 %>%
+  pivot_longer(cols = -imdb_id, names_to = "type", values_to = "nombre") %>%
+  select(imdb_id, nombre) %>%
+  distinct()
+
+write.csv(nombres, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_actores_full.csv",row.names = FALSE)
+
+```
