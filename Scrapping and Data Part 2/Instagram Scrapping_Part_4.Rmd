@@ -105,7 +105,7 @@ write.csv(data_filtered_3, "C:/Users/sofia/Documents/Documentos/Master Computati
 
 ```
 
-### Data set samples for Scrapping in Instagram
+### Data set samples for Scrapping in Instagram with python script
 
 ```{r}
 movies2 <- data_filtered_3 %>% select(FirstActor_imdb,imdb_id)
