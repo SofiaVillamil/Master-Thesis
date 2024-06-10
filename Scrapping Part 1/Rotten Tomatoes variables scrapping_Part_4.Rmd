@@ -12,6 +12,10 @@ rm(list = ls())
 ```
 We are going to use different user agents at random in order to not compromise the web page and the scrapping
 ```{r}
+set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here
+```
+
+```{r}
 user_agents <- c(
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36",
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36",
@@ -36,7 +40,6 @@ get_random_user_agent <- function() {
 ```
 
 ### Libraries
-
 
 ```{r}
 library(rvest)

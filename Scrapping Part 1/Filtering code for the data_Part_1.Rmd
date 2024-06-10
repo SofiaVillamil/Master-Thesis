@@ -29,3 +29,15 @@ write.csv(filtered_movies, "C:/Users/sofia/Documents/Documentos/Master Computati
 
 ```
 
+Checking that I can scrap the data from this pages. Meaning I have permit to access and index every part of the site without any restrictions. 
+
+```{r}
+library(robotstxt)
+
+paths_allowed("https://www.rottentomatoes.com/")
+paths_allowed("https://www.imdb.com/")
+paths_allowed("https://www.boxofficemojo.com/")
+paths_allowed("https://www.google.com/")
+paths_allowed("https://www.youtube.com/")
+```
+
