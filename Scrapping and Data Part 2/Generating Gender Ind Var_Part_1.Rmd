@@ -5,6 +5,10 @@ date: "2024-06-01"
 output: html_document
 ---
 
+### Generating Gender Variable
+
+We are going to create a gender variable for the analysis.
+
 ```{r}
 rm(list = ls())
 ```
@@ -408,5 +412,6 @@ data$lead_is_woman <- sapply(data$FirstActor_imdb, map_gender, gender_map = gend
 
 ```{r}
 write.csv(data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_2.csv", row.names = FALSE)
-
 ```
+
+Now we continue to the next script called "Data Cleaning_Part_2"

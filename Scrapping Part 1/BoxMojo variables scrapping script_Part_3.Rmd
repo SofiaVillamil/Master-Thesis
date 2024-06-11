@@ -5,7 +5,9 @@ date: "2024-06-02"
 output: html_document
 ---
 
-BOX MOJO SCRAPPING
+### BOX MOJO SCRAPPING
+
+We are going to scrap the website BoxMojo (Link: <https://www.boxofficemojo.com/>) in order to complement the data set with more variables that we could not found in the previous website.
 
 ```{r}
 rm(list = ls())
@@ -124,7 +126,7 @@ suffix <- "_bm"
 scraped_data <- scraped_data %>%
   rename_with(~ paste0(., suffix), -1) 
 
-``` 
+```
 
 ```{r}
 # Merge
@@ -133,7 +135,6 @@ final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
 # Saving data set
 write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test_with_bm.csv", row.names = FALSE)
 ```
-
 
 ```{r}
 # checking columns for NA's
@@ -151,3 +152,4 @@ df_cleaned <- final_data %>%
 write.csv(df_cleaned, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test_with_bm_cleaned.csv", row.names = FALSE)
 ```
 
+We are now going to continue to the next script called "Rotten Tomatoes variables scrapping_Part_4"

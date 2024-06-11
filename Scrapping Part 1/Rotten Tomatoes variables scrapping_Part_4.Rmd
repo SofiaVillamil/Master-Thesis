@@ -5,12 +5,16 @@ date: "2024-06-01"
 output: html_document
 ---
 
-ROTTEN TOMATOES SCRIPT
+### ROTTEN TOMATOES SCRIPT
+
+We are going to scrap Rotten Tomatoes to get other variables (Link: <https://www.rottentomatoes.com/>)
 
 ```{r}
 rm(list = ls())
 ```
+
 We are going to use different user agents at random in order to not compromise the web page and the scrapping
+
 ```{r}
 set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here
 ```
@@ -278,4 +282,4 @@ write_csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational 
 
 ```
 
-
+This completes the first part of the scrapping. We will now continue to the next file called "Scrapping and Data Part 2" and then to the script called "Generating Gender Ind Var_Part_1"

@@ -5,7 +5,9 @@ date: "2024-03-03"
 output: html_document
 ---
 
-IMDB SCRAPPING 
+### IMDB SCRAPPING
+
+We are going to start by scraping the IMDB data base (Link: <https://www.imdb.com>). We are using the Kaggel data base and filling the data set with more variables.
 
 ```{r}
 rm(list = ls())
@@ -148,3 +150,5 @@ final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
 write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test.csv", row.names = FALSE)
 
 ```
+
+We are now going to continue to the next script called "BoxMojo variables scrapping script_Part_3"

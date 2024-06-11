@@ -7,7 +7,7 @@ output: html_document
 
 ### SCRAPPING FOR ROTTEN TOMATOES AGAIN
 
-We are going to scrap again for the specific url's found to be NA's in the previous data set. The objective is to attain more data and reduce the missing values for reviews
+There are a lot of missing data from the Rotten Tomatoes scrapping due to having different URL structures. This is why we are going to take a new approach for scrapping to attain more data for our analysis.
 
 ```{r}
 rm(list = ls())
@@ -162,7 +162,7 @@ save_results(results, file_path)
 stopCluster(cl)
 ```
 
-Some Movies where not found in the page so I will eliminate them from the data set to have less movies to search.
+Some movies where not found in the page so I will eliminate them from the data set.
 
 ```{r}
 results2 <- results[!is.na(results$generated_url), ]
@@ -297,3 +297,5 @@ merged_data <- merged_data %>%
 write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_3.csv",row.names = FALSE)
 
 ```
+
+We are now going to continue with the next scrapping script called "Scrapping The Numbers selected movies_Part_4"

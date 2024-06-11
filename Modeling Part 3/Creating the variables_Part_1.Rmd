@@ -1,0 +1,407 @@
+---
+title: "Creation of the variables"
+author: "Sofia Villamil"
+date: "2024-06-10"
+output: html_document
+---
+
+```{r}
+rm(list = ls())
+```
+
+#### Libraries
+
+```{r}
+library(readr)
+library(caret)
+library(tidyverse)
+library(sentimentr) # for the sentiment analysis
+library(lubridate) # for release data
+```
+
+```{r}
+data_final <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv", show_col_types = FALSE)
+```
+
+### Sentiment Analysis of Reviews
+
+Let´s start with the Reviews Variable.
+
+-   TitleReview_imdb
+
+-   FeatureReview_imdb
+
+-   top_critic_review_1_rt
+
+-   top_critic_review_2_rt
+
+-   audience_review_1_rt
+
+-   audience_review_2_rt
+
+```{r}
+data <- data_final %>%
+  select(imdb_id, TitleReview_imdb, FeatureReview_imdb, top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt)
+
+```
+
+```{r}
+# Function to calculate sentiment score using sentimentr
+get_sentiment <- function(text) {
+  if (is.na(text) || length(text) == 0) {
+    return(NA)
+  } else {
+    sentiment <- sentiment(text)
+    return(mean(sentiment$sentiment))
+  }
+}
+
+# Apply the function to each review column, excluding 'imdb_id'
+data <- data %>%
+  mutate(across(c(TitleReview_imdb, FeatureReview_imdb, top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt), 
+                ~ map_dbl(.x, get_sentiment), .names = "{col}_sentiment"))
+
+```
+
+Let's check that the analysis is done correctly using the title and the review of imdb.
+
+```{r}
+# Select specific columns and store them in a new tibble
+data_check <- data_final %>%
+  select(imdb_id, TitleReview_imdb, FeatureReview_imdb)
+
+
+# Apply the function to the TitleReview_imdb and FeatureReview_imdb columns
+data_check <- data_check %>%
+  mutate(TitleReview_imdb_sentiment = map_dbl(TitleReview_imdb, get_sentiment),
+         FeatureReview_imdb_sentiment = map_dbl(FeatureReview_imdb, get_sentiment))
+
+# Function to classify sentiment
+classify_sentiment <- function(score) {
+  if (is.na(score)) {
+    return("Neutral")
+  } else if (score > 0.2) {
+    return("Positive")
+  } else if (score < -0.2) {
+    return("Negative")
+  } else {
+    return("Neutral")
+  }
+}
+
+# Classify the sentiment scores
+data_check <- data_check %>%
+  mutate(TitleReview_imdb_class = sapply(TitleReview_imdb_sentiment, classify_sentiment),
+         FeatureReview_imdb_class = sapply(FeatureReview_imdb_sentiment, classify_sentiment))
+
+# Check if the sentiment alignment is correct
+data_check <- data_check %>%
+  mutate(sentiment_alignment = case_when(
+    TitleReview_imdb_class == FeatureReview_imdb_class ~ "Aligned",
+    TitleReview_imdb_class == "Neutral" | FeatureReview_imdb_class == "Neutral" ~ "Aligned",
+    TRUE ~ "Not Aligned"
+  ))
+
+# Display the result
+print(data_check)
+
+```
+
+Now we are going to use the average to create the overall sentiment score for the reviews of the each movie.
+
+```{r}
+# Calculate the overall sentiment score as the mean of all sentiment scores
+data <- data %>%
+  rowwise() %>%
+  mutate(overall_sentiment_score = mean(c_across(ends_with("_sentiment")), na.rm = TRUE)) %>%
+  ungroup()
+
+# Display the result
+print(data)
+
+```
+
+### Genre
+
+```{r}
+unique_genres <- data_final %>%
+  group_by(Genre_imdb) %>%
+  summarise(count = n()) %>%
+  ungroup()
+```
+
+Checked individually the most unique genres and look into the titles
+
+```{r}
+unique_genres <- data_final %>%
+  select(title, Genre_imdb) %>%
+  filter(Genre_imdb == "Romance")
+unique_genres
+```
+
+We are going to reduce the types of genre to the main one by using Rotten Tomatoes genres
+
+```{r}
+# Update the genre for the movie
+data_final <- data_final %>%
+  mutate(Genre_imdb = case_when(
+    title == "Bennett's War" ~ "Drama",
+    title == "Sympathy for the Devil" ~ "Thriller",
+    title == "D-Day Assassins" ~ "Drama",
+    title == "Nefta Football Club" ~ "Comedy",
+    title == "The Neighbors' Window" ~ "Drama",
+    title == "The Staggering Girl" ~ "Drama",
+    title == "Strange Way of Life" ~ "Romance",
+    Genre_imdb == "History" ~ "Drama",
+    TRUE ~ Genre_imdb
+  ))
+
+```
+
+Creating the genre dummy for analysis, it will take the value one if the movie is a certain genre.
+
+```{r}
+# Ensure Genre_imdb is a factor
+data_final <- data_final %>%
+  mutate(Genre_imdb = factor(Genre_imdb))
+
+# crating the dummy variables
+dummy <- dummyVars(" ~ Genre_imdb", data = data_final)
+data_final_encoded <- as.data.frame(predict(dummy, newdata = data_final))
+
+```
+
+```{r}
+# combining the columns
+data_final <- bind_cols(data_final, data_final_encoded)
+
+data_final <- data_final %>%
+  select(-Genre_imdb)
+```
+
+### MPAA
+
+```{r}
+unique_MPAA <- data_final %>%
+  group_by(MPAA_imdb) %>%
+  summarise(count = n()) %>%
+  ungroup()
+unique_MPAA
+```
+
+There are 36 distinct ratings, we will standardize it for the analysis using the Motion Pictures Association Rating Guide (Click here for the interactive guide: <https://www.motionpictures.org/film-ratings/>).
+
+```{r}
+# Function to standardize ratings
+standardize_rating <- function(rating) {
+  case_when(
+    rating %in% c("G", "TV-Y", "TV-G", "A", "AL", "TP", "A/fig", "A/i", "A/i/fig", "0+", "3", "4", "6+", "TV-Y7") ~ "General Audiences",
+    rating %in% c("PG", "TV-PG", "2", "5", "7","7/i","7/fig","10", "12", "12/fig", "13", "13+") ~ "Parental Guidance Suggested",
+    rating %in% c("PG-13", "TV-14", "14", "16", "16+", "16/fig", "9+", "M") ~ "Parents Strongly Cautioned",
+    rating %in% c("R", "TV-MA", "18", "18+", "18/fig", "NC-17", "X") ~ "Restricted",
+    rating %in% c("NC-17") ~ "No One 17 and Under Admitted",
+    rating %in% c("Not Rated") ~ "Not Rated",
+    TRUE ~ "Unknown"
+  )
+}
+
+# Apply the function to standardize ratings
+data_final <- data_final %>%
+  mutate(MPAA = standardize_rating(MPAA_imdb))
+
+# transforming it as a factor
+data_final <- data_final %>%
+  mutate(MPAA = factor(MPAA))
+
+# Check if there are categories that are "Unknown"
+unknown_values <- data_final %>%
+  filter(MPAA == "Unknown") %>%
+  select(MPAA_imdb) %>%
+  distinct() 
+# there are no unknown values!
+```
+
+```{r}
+# Creating the dummy variable
+dummy_mpaa <- dummyVars(" ~ MPAA", data = data_final)
+data_final_encoded_mpaa <- as.data.frame(predict(dummy_mpaa, newdata = data_final))
+
+data_final <- bind_cols(data_final, data_final_encoded_mpaa)
+
+data_final <- data_final %>%
+  select(-MPAA_imdb, -MPAA)
+```
+
+### Original Language
+
+```{r}
+unique_Lang <- data_final %>%
+  select(original_language) %>%
+  distinct()
+unique_Lang
+```
+
+```{r}
+data_final <- data_final %>%
+  mutate(original_language= factor(original_language))
+
+dummy_lang <- dummyVars(" ~ original_language", data = data_final)
+data_final_encoded_lang <- as.data.frame(predict(dummy_lang, newdata = data_final))
+
+data_final <- bind_cols(data_final, data_final_encoded_lang)
+
+data_final <- data_final %>%
+  select(-original_language)
+```
+
+### Duration of the movie
+
+```{r}
+# Normalize the duration variable between 0 and 1
+data_final <- data_final %>%
+  mutate(duration_normalized = (Duration_mov_imdb- min(Duration_mov_imdb)) / (max(Duration_mov_imdb) - min(Duration_mov_imdb)))
+
+summary(data_final$duration_normalized)
+data_final <- data_final %>%
+  select(-Duration_mov_imdb)
+```
+
+### Release Date
+
+```{r}
+data_final <- data_final %>%
+  mutate(release_date = dmy(release_date))
+```
+
+```{r}
+# Extract year, month, and day
+data_final <- data_final %>%
+  mutate(release_year = year(release_date),
+         release_month = month(release_date),
+         release_day = day(release_date))
+
+# Calculate the age of the movie
+current_year <- year(Sys.Date())
+data_final <- data_final %>%
+  mutate(movie_age = current_year - release_year)
+
+# Create a feature to determine if the release date is a weekend
+data_final <- data_final %>%
+  mutate(is_weekend = if_else(wday(release_date) %in% c(1, 7), 1, 0))
+
+```
+
+Season
+
+```{r}
+# Create a feature for the season 
+data_final <- data_final %>%
+  mutate(season = case_when(
+    month(release_date) %in% c(12, 1, 2) ~ "Winter",
+    month(release_date) %in% c(3, 4, 5) ~ "Spring",
+    month(release_date) %in% c(6, 7, 8) ~ "Summer",
+    month(release_date) %in% c(9, 10, 11) ~ "Fall"
+  ))
+
+```
+
+```{r}
+# Creating a dummy variable
+data_final <- data_final %>%
+  mutate(season_ = factor(season))
+
+dummy_season <- dummyVars(" ~ season", data = data_final)
+data_final_encoded_season <- as.data.frame(predict(dummy_season, newdata = data_final))
+
+data_final <- bind_cols(data_final, data_final_encoded_season)
+
+data_final <- data_final %>%
+  select(-release_date, -season)
+```
+
+### Budget
+
+There are a lot of NA's in budget and I believe that imputing will affect the final results, so I have decided to eliminate this variable.
+
+data_final \<- data_final %\>%
+
+select(-Budget)
+
+```{r}
+na_count <- sum(is.na(data_final $Budget))
+na_count
+```
+
+### Production Companies
+
+There are a lot of production companies that appear 1 time in the data set. This is not going to bring little to no insight into the analysis as we do not have enough observations for each so I have decided to eliminate it.
+
+```{r}
+unique_prod <- data_final %>%
+  group_by(production_companies) %>%
+  summarise(count = n()) %>%
+  ungroup()
+unique_prod
+
+```
+
+```{r}
+data_final <- data_final %>%
+  select(-production_companies)
+```
+
+### World Wide Gross (Dependent Variables)
+
+```{r}
+# Visualize the distribution with a histogram
+ggplot(data_final, aes(x = world_wide_gross)) +
+  geom_histogram(binwidth = 5000000000, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of World Wide Gross", x = "World Wide Gross", y = "Frequency")
+
+# Visualize the distribution with a density plot
+ggplot(data_final, aes(x = world_wide_gross)) +
+  geom_density(fill = "blue", alpha = 0.7) +
+  labs(title = "Density Plot of World Wide Gross", x = "World Wide Gross", y = "Density")
+
+# Visualize the distribution with a boxplot
+ggplot(data_final, aes(y = world_wide_gross)) +
+  geom_boxplot(fill = "blue", alpha = 0.7) +
+  labs(title = "Boxplot of World Wide Gross", y = "World Wide Gross")
+
+# Summary statistics
+summary_stats <- data_final %>%
+  summarise(
+    mean = mean(world_wide_gross, na.rm = TRUE),
+    median = median(world_wide_gross, na.rm = TRUE),
+    sd = sd(world_wide_gross, na.rm = TRUE),
+    min = min(world_wide_gross, na.rm = TRUE),
+    max = max(world_wide_gross, na.rm = TRUE)
+  )
+
+print(summary_stats)
+
+```
+
+```{r}
+# Calculate the 90th and 95th percentile as potential thresholds for success
+threshold_90 <- quantile(data_final$world_wide_gross, 0.90, na.rm = TRUE)
+
+print(threshold_90)
+
+# Choose the 90th percentile as the success threshold for this example
+success_threshold <- threshold_90
+
+# Create binary target variable for success
+data_final <- data_final %>%
+  mutate(success = if_else(world_wide_gross >= success_threshold, 1, 0))
+
+```
+
+```{r}
+# Select the title and success columns
+selected_data <- data_final %>%
+  select(title,Budget,success)
+
+# View the selected columns
+View(selected_data)
+```

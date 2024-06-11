@@ -4,6 +4,9 @@ author: "Sofia Villamil"
 date: "2024-06-05"
 output: html_document
 ---
+### First cleaning of the data
+
+We will start by cleaning a little of the data set so we can continue with the next part of the scrapping. In this script we will take some importan decisions of how we are going to deal with certain missing values and creating smaller data sets to be used for other scrapping scripts.
 
 ```{r}
 rm(list = ls())
@@ -139,3 +142,4 @@ write.csv(movies, "C:/Users/sofia/Documents/Documentos/Master Computational Soci
 
 ```
 
+We will now continue to the next script called "Scrapping Rotten selected movies_Part_3"

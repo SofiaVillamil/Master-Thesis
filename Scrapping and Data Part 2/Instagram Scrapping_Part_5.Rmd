@@ -1,5 +1,5 @@
 ---
-title: "Instagram Scrapping_Part_4"
+title: "Instagram Scrapping_Part_5"
 author: "Sofia Villamil"
 date: "2024-06-06"
 output: html_document
@@ -7,7 +7,7 @@ output: html_document
 
 ### STARTING WITH INSTAGRAM SCRAPPING
 
-We will attain a variable for the follower that each actor has. However, first to reduce the scrapping amount we will clean the data eliminating the movies with a lot of NA's.
+We will attain a variable for the followers that each actor has. However, first to reduce the scrapping amount we will clean the data eliminating the movies with a lot of NA's.
 
 ```{r}
 rm(list = ls())
@@ -129,3 +129,5 @@ nombres <- nombres[!duplicated(nombres$name), ]
 write.xlsx(nombres,"C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_actores_full.xlsx",row.Names = FALSE)
 
 ```
+
+We will now continue with the Instagram Script and the Youtube Script. They are python scripts called "Instagram Test_Part_6" and "YoutubeScrapping_Part_7". After this scripts we will come back to the R scripts for the last scrapping script called "Scrapping TMDB selected movies_Part_8".
