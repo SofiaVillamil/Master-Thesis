@@ -88,6 +88,8 @@ scrape_boxofficemojo <- function(imdb_id, index) {
     extract_single_text()
   number_of_markets <- sub(" markets$", "", number_of_markets)  
   
+  Sys.sleep(2)
+
   data.frame(
     imdb_id = imdb_id, Title = title, 
     DomesticDistributor = domestic_distributor, Budget = budget,

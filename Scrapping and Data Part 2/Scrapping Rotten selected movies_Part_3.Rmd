@@ -29,26 +29,6 @@ library(furrr)
 set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here
 ```
 
-We are using different user agents in order to not compromise the page.
-
-```{r}
-user_agents <- c(
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0",
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0"
-)
-
-```
-
 This is the data set attained in the previous code for the URL's that were not found.
 
 ```{r}
@@ -90,8 +70,7 @@ known_variations <- list(
 # Function to check if a URL is valid
 is_url_valid <- function(url) {
   tryCatch({
-    user_agent <- sample(user_agents, 1)
-    response <- HEAD(url, user_agent(user_agent))
+    response <- HEAD(url)
     response$status_code == 200
   }, error = function(e) {
     FALSE
@@ -221,6 +200,8 @@ scrape_movie_data <- function(url) {
   
   audience_review_2_rt <- extract_single_text(movie_page %>% 
     html_node(xpath = '(//carousel-slider//review-card-audience[@slot="tile"])[2]//rt-text[@slot="content"]'))
+  
+  Sys.sleep(2)  
 
   data.frame(
     title_rt = title_rt,

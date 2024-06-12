@@ -101,6 +101,8 @@ scrape_imdb <- function(imdb_id, index) {
   
   oscars_nominations <- extract_single_text(movie_page %>% html_node('a.ipc-metadata-list-item__label--link[aria-label="See more awards and nominations"]'))
   
+  Sys.sleep(2)  
+
   data.frame(
     imdb_id = imdb_id, Title = title, 
     Year = year, MPAA = mpaa_rating, Duration = duration, IMDbscore = imdb_score, Director = director,
@@ -119,6 +121,7 @@ movies <- movies %>%
   group_by(title) %>%
   filter(year == min(year)) %>%
   ungroup()
+
 # Selecting the amount of movies to scrap in 8 hours
 test_movies <- head(movies, 55000) 
 
