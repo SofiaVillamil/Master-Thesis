@@ -1,0 +1,211 @@
+---
+title: "Scrapping for the Budget again"
+author: "Sofia Villamil"
+date: "2024-06-11"
+output: html_document
+---
+
+## SCRAPPING FROM TMDB
+
+We are still missing various budget from movies and I want to have this information for my research because i believe its critical to establish if a movies is successful or not. This is why we are going to scrap data from The Movie Data Base found (Link: <https://www.themoviedb.org/> ). Due to the URL having an Id that I don't poses, we will use the API from this website to gather that data.
+
+```{r}
+rm(list = ls())
+```
+
+```{r}
+library(readr)
+library(tidyr)
+library(httr)
+library(dplyr)
+library(jsonlite)
+library(rvest)
+library(foreach)
+library(doParallel)
+library(stringr)
+
+```
+
+```{r}
+data_final_4 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_4.csv",show_col_types = FALSE)
+```
+
+```{r}
+set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here
+```
+
+This is our data base with only the titles that have missing Budgets.
+
+```{r}
+is_na <- data_final_4 %>% 
+  filter(is.na(Budget)) %>%
+  select(title, imdb_id, Budget)
+```
+
+### Getting the API Key
+
+I am going to use the API of the website to attain the data. So first we need to get an API key. (Link for the API: <https://developer.themoviedb.org/reference/intro/getting-started>)
+
+1.  We pick the language: "R"
+
+2.  We press "Get API Key"
+
+3.  We need to register
+
+```         
+-   Filling out all the information, saying this is a study assignment and putting my personal information.
+
+-   Then we validate with our email that we put for our personal information, it needs to be the same.
+```
+
+4.  Finally we are in and at the bottom of the page we have the API key.
+
+### Getting started with the API 
+
+```{r}
+# Function to search for movies id
+get_movie_id <- function(title, api_key) {
+  base_url <- "https://api.themoviedb.org/3/search/movie"
+  query <- list(api_key = api_key, query = title)
+  
+  response <- GET(base_url, query = query)
+  content <- content(response, "text", encoding = "UTF-8")
+  
+  json <- fromJSON(content, flatten = TRUE)
+  
+  cat("Title:", title, "\n")
+  cat("Response:", content, "\n\n")
+  
+  if (!is.null(json$results) && length(json$results) > 0) {
+    movie_id <- json$results$id[1]
+    if (is.numeric(movie_id)) {
+      return(movie_id)
+    }
+  }
+  
+  return(NA)
+}
+
+api_key <- "872bd1f42ef7f3f20979f4644b28655e" # Replace with your TMDB API key
+
+
+# there is a row that is problematic and does not give the correct id and it has no info on budget so we eliminate it.
+is_na_clean <- is_na %>% filter(title != "The Whole Truth")
+
+titles <- is_na_clean$title
+
+# Parallel processing
+num_cores <- detectCores() - 1
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
+
+results <- foreach(title = titles, .combine = rbind, .packages = c("httr", "jsonlite")) %dopar% {
+  id <- tryCatch({
+    get_movie_id(title, api_key)
+  }, error = function(e) {
+    NA
+  })
+  Sys.sleep(1)
+  data.frame(title = title, MovieID = id, stringsAsFactors = FALSE)
+}
+
+stopCluster(cl)
+
+df_results <- as.data.frame(results)
+
+is_na2 <- is_na %>%
+  left_join(df_results, by = "title")
+
+is_na2 <- is_na2 %>% distinct(imdb_id, .keep_all = TRUE) # there are some duplicates so we use the imdb_id to remove them.
+```
+
+```{r}
+# save to have a back up
+write.csv(is_na2,"C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_ids_1.csv")
+
+```
+
+This part needs to be done in sets of titles so we do not affect the website. I did it in chunks of 300 movies. You start with is 1:300 and continue on till you reach the last observations
+
+```{r}
+chunck <- is_na2[1:10, ]
+```
+
+```{r}
+# Scrapping Function
+scrape_budget <- function(movie_id) {
+  url <- paste0("https://www.themoviedb.org/movie/", movie_id)
+  
+  tryCatch({
+    page <- read_html(url)
+  
+    facts_section <- page %>% html_node(xpath = '//section[@class="facts left_column"]')
+    if (is.null(facts_section)) {
+      return(NA)
+    }
+    
+    budget_text <- facts_section %>% 
+      html_node(xpath = './/p[strong/bdi[text()="Presupuesto"]]') %>%
+      html_text(trim = TRUE)
+    
+    budget <- budget_text %>%
+      str_extract("\\$[\\d,]+") %>%
+      gsub("[\\$,]", "", .) %>%
+      as.numeric()
+    
+    if (is.na(budget) || length(budget) == 0) {
+      budget <- NA
+    }
+    return(budget)
+  }, error = function(e) {
+    message(paste("Error scraping movie ID:", movie_id, "Error:", e$message))
+    return(NA)
+  })
+}
+
+# parallel processing
+num_cores <- detectCores() - 1
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
+
+results <- foreach(i = 1:nrow(chunck), .combine = rbind, .packages = c("rvest", "httr", "stringr")) %dopar% {
+  movie_id <- chunck$MovieID[i]
+  budget <- scrape_budget(movie_id)
+  Sys.sleep(5)
+  data.frame(MovieID = movie_id, Budget = budget)
+}
+
+stopCluster(cl)
+```
+
+```{r}
+# Joining and saving everything
+chunck$Budget <- results$Budget[match(chunck$MovieID, results$MovieID)]
+
+```
+
+```{r}
+data <- data_final_4 # so i dont affect previous code for the urls
+```
+
+```{r}
+# as we are doing it in chunck, it will be manually updated so it does not overwrite previous observations
+for(i in 1:nrow(chunck)) {
+  imdb_id <- chunck$imdb_id[i]
+  budget_scraped <- chunck$Budget[i]
+  
+  row_index <- which(data$imdb_id == imdb_id)
+  
+  if(length(row_index) > 0 && is.na(data$Budget[row_index])) {
+    data$Budget[row_index] <- budget_scraped
+  }
+}
+```
+
+### Saving
+```{r}
+write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv",row.names = FALSE)
+
+```
+
+This is the last scrapping script. Now we move on to the Modeling Part 3 file where we will start with the script "Creating the variables_Part_1"

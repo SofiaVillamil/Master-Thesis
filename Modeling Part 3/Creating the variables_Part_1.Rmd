@@ -5,6 +5,8 @@ date: "2024-06-10"
 output: html_document
 ---
 
+## Creation of the final variables we are going to use in this analysis
+
 ```{r}
 rm(list = ls())
 ```
@@ -21,104 +23,9 @@ library(lubridate) # for release data
 
 ```{r}
 data_final <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv", show_col_types = FALSE)
-```
 
-### Sentiment Analysis of Reviews
-
-Let´s start with the Reviews Variable.
-
--   TitleReview_imdb
-
--   FeatureReview_imdb
-
--   top_critic_review_1_rt
-
--   top_critic_review_2_rt
-
--   audience_review_1_rt
-
--   audience_review_2_rt
-
-```{r}
-data <- data_final %>%
-  select(imdb_id, TitleReview_imdb, FeatureReview_imdb, top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt)
-
-```
-
-```{r}
-# Function to calculate sentiment score using sentimentr
-get_sentiment <- function(text) {
-  if (is.na(text) || length(text) == 0) {
-    return(NA)
-  } else {
-    sentiment <- sentiment(text)
-    return(mean(sentiment$sentiment))
-  }
-}
-
-# Apply the function to each review column, excluding 'imdb_id'
-data <- data %>%
-  mutate(across(c(TitleReview_imdb, FeatureReview_imdb, top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt), 
-                ~ map_dbl(.x, get_sentiment), .names = "{col}_sentiment"))
-
-```
-
-Let's check that the analysis is done correctly using the title and the review of imdb.
-
-```{r}
-# Select specific columns and store them in a new tibble
-data_check <- data_final %>%
-  select(imdb_id, TitleReview_imdb, FeatureReview_imdb)
-
-
-# Apply the function to the TitleReview_imdb and FeatureReview_imdb columns
-data_check <- data_check %>%
-  mutate(TitleReview_imdb_sentiment = map_dbl(TitleReview_imdb, get_sentiment),
-         FeatureReview_imdb_sentiment = map_dbl(FeatureReview_imdb, get_sentiment))
-
-# Function to classify sentiment
-classify_sentiment <- function(score) {
-  if (is.na(score)) {
-    return("Neutral")
-  } else if (score > 0.2) {
-    return("Positive")
-  } else if (score < -0.2) {
-    return("Negative")
-  } else {
-    return("Neutral")
-  }
-}
-
-# Classify the sentiment scores
-data_check <- data_check %>%
-  mutate(TitleReview_imdb_class = sapply(TitleReview_imdb_sentiment, classify_sentiment),
-         FeatureReview_imdb_class = sapply(FeatureReview_imdb_sentiment, classify_sentiment))
-
-# Check if the sentiment alignment is correct
-data_check <- data_check %>%
-  mutate(sentiment_alignment = case_when(
-    TitleReview_imdb_class == FeatureReview_imdb_class ~ "Aligned",
-    TitleReview_imdb_class == "Neutral" | FeatureReview_imdb_class == "Neutral" ~ "Aligned",
-    TRUE ~ "Not Aligned"
-  ))
-
-# Display the result
-print(data_check)
-
-```
-
-Now we are going to use the average to create the overall sentiment score for the reviews of the each movie.
-
-```{r}
-# Calculate the overall sentiment score as the mean of all sentiment scores
-data <- data %>%
-  rowwise() %>%
-  mutate(overall_sentiment_score = mean(c_across(ends_with("_sentiment")), na.rm = TRUE)) %>%
-  ungroup()
-
-# Display the result
-print(data)
-
+data_final <- data_final %>%
+  select(-title_rt,-title_scraped,-MovieID)
 ```
 
 ### Genre
@@ -316,19 +223,15 @@ data_final_encoded_season <- as.data.frame(predict(dummy_season, newdata = data_
 data_final <- bind_cols(data_final, data_final_encoded_season)
 
 data_final <- data_final %>%
-  select(-release_date, -season)
+  select(-release_date, -season_)
 ```
 
 ### Budget
 
 There are a lot of NA's in budget and I believe that imputing will affect the final results, so I have decided to eliminate this variable.
 
-data_final \<- data_final %\>%
-
-select(-Budget)
-
 ```{r}
-na_count <- sum(is.na(data_final $Budget))
+na_count <- sum(is.na(data_final$Budget))
 na_count
 ```
 
@@ -398,10 +301,341 @@ data_final <- data_final %>%
 ```
 
 ```{r}
-# Select the title and success columns
-selected_data <- data_final %>%
-  select(title,Budget,success)
+# Select relevant columns and create new ones
+selected_data2 <- data_final %>%
+  select(title, Budget, world_wide_gross, success) %>%
+  mutate(
+    profit = world_wide_gross - Budget,
+    marketing = 0.5 * Budget, # it said it on the internet
+    new_budget = marketing + Budget,
+    actual_prof = world_wide_gross - new_budget
+  ) %>%
+  mutate(across(c(Budget, world_wide_gross, profit, new_budget, actual_prof), comma))
 
-# View the selected columns
-View(selected_data)
 ```
+
+### Score
+
+We are going to create a combined score, using the three scores attained and the total voting for those score.
+```{r}
+# First we normalize IMDb scores to a 0-100 scale equal to the rt one.
+data_final <- data_final %>%
+  mutate(imdb_score_normalized = IMDbscore_imdb * 10)
+```
+
+I decided to do this instead of differentiating between the three because I want to concentrate the impact of this score in the revenue, not the impact that each has on the revenue of a movie.
+
+Now, I have some missing values but I dont want to loose information that the movies with this missing values is going to give me so we are going to create a mix approach to calculate the score.
+
+```{r}
+data_final <- data_final %>%
+  rowwise() %>%
+  mutate(
+    # cases with all scores
+    weighted_sum_all = sum(
+      na.omit(c(imdb_score_normalized,
+                critics_score_rt * total_critics_reviews_rt,
+                audience_score_rt * total_audience_reviews_rt))),
+    total_reviews_all = sum(
+      na.omit(c(1, total_critics_reviews_rt, total_audience_reviews_rt))),
+    combined_score_all = ifelse(total_reviews_all > 0, weighted_sum_all / total_reviews_all, NA),
+    
+    # cases missing audience scores
+    weighted_sum_no_audience = sum(
+      na.omit(c(imdb_score_normalized,
+                critics_score_rt * total_critics_reviews_rt))),
+    total_reviews_no_audience = sum(
+      na.omit(c(1, total_critics_reviews_rt))),
+    combined_score_no_audience = ifelse(total_reviews_no_audience > 0, weighted_sum_no_audience / total_reviews_no_audience, NA),
+    
+    # cases missing critics' scores
+    weighted_sum_no_critics = sum(
+      na.omit(c(imdb_score_normalized,
+                audience_score_rt * total_audience_reviews_rt))),
+    total_reviews_no_critics = sum(
+      na.omit(c(1, total_audience_reviews_rt))),
+    combined_score_no_critics = ifelse(total_reviews_no_critics > 0, weighted_sum_no_critics / total_reviews_no_critics, NA),
+    
+    # cases with only IMDb scores
+    combined_score_imdb_only = imdb_score_normalized,
+    
+    # combined score creation
+    combined_score = case_when(
+      !is.na(combined_score_all) ~ combined_score_all,
+      !is.na(combined_score_no_audience) ~ combined_score_no_audience,
+      !is.na(combined_score_no_critics) ~ combined_score_no_critics,
+      TRUE ~ combined_score_imdb_only
+    )
+  ) %>%
+  ungroup()
+```
+
+```{r}
+data_final <- data_final %>%
+  mutate(
+    min_combined_score = min(combined_score, na.rm = TRUE),
+    max_combined_score = max(combined_score, na.rm = TRUE),
+    movie_score = (combined_score - min_combined_score) / (max_combined_score - min_combined_score)
+  )
+```
+
+
+```{r}
+data_final <- data_final %>%
+  select(-min_combined_score, -max_combined_score, -IMDbscore_imdb, -imdb_score_normalized,
+         -weighted_sum_all, -total_reviews_all, -combined_score_all,
+         -weighted_sum_no_audience, -total_reviews_no_audience, -combined_score_no_audience,
+         -weighted_sum_no_critics, -total_reviews_no_critics, -combined_score_no_critics,
+         -combined_score_imdb_only, -combined_score)
+
+```
+
+# Director
+
+Let's start with cleaning the variable for the Oscars.
+
+```{r}
+oscar_summary <- data_final %>%
+  filter(Oscar_Information_imdb != 'Awards') %>%
+  group_by(Oscar_Information_imdb) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+```
+
+The top awards will be given waits based on this list (Link:https://www.therichest.com/luxury/top-10-most-prestigious-movie-awards-in-the-world/)
+
+```{r}
+award_weights <- c(
+  'Won 1 Oscar' = 50,
+  'Won 2 Oscars' = 100,
+  'Won 3 Oscars' = 150,
+  'Won 4 Oscars' = 200,
+  'Won 5 Oscars' = 250,
+  'Won 6 Oscars' = 300,
+  'Won 7 Oscars' = 350,
+  'Won 1 BAFTA Award' = 30,
+  'Won 2 BAFTA Awards' = 60,
+  'Won 1 Primetime Emmy' = 20,
+  'Won 2 Primetime Emmys' = 40,
+  'Nominated for 1 Oscar' = 15,
+  'Nominated for 2 Oscars' = 30,
+  'Nominated for 3 Oscars' = 45,
+  'Nominated for 4 Oscars' = 60,
+  'Nominated for 5 Oscars' = 75,
+  'Nominated for 1 BAFTA Award' = 10,
+  'Nominated for 2 BAFTA Awards' = 20,
+  'Nominated for 3 BAFTA Awards' = 30,
+  'Nominated for 1 Primetime Emmy' = 5,
+  'Nominated for 2 Primetime Emmys' = 10,
+  'Nominated for 3 Primetime Emmys' = 15
+)
+
+```
+Taking into account that I will also get the number of awards and nominations.
+
+Now we will clean the Awards and nomination variables
+```{r}
+unique_awards_nominations <- data_final %>%
+  select(AwardsAndNominations_imdb) %>%
+  distinct() %>%
+  arrange(AwardsAndNominations_imdb)
+```
+
+Cleaning the column as the movies with no awards need to be cleaned to represent that.
+```{r}
+data_final <- data_final %>%
+  mutate(
+    AwardsAndNominations_imdb = ifelse(str_detect(AwardsAndNominations_imdb, "win|wins|nomination|nominations"), 
+                                       AwardsAndNominations_imdb, 
+                                       "No Awards")
+  )
+
+```
+
+```{r}
+# Extract wins and nominations
+data_final <- data_final %>%
+  mutate(
+    wins = ifelse(AwardsAndNominations_imdb != "No Awards", 
+                  as.numeric(str_extract(AwardsAndNominations_imdb, "\\d+(?=\\s+win|\\s+wins)")), 0),
+    nominations = ifelse(AwardsAndNominations_imdb != "No Awards", 
+                         as.numeric(str_extract(AwardsAndNominations_imdb, "\\d+(?=\\s+nomination|\\s+nominations)")), 0)
+  )
+
+
+```
+
+```{r}
+# Calculate the award score for each director based on their awards and nominations history in my data set
+data_final <- data_final %>%
+  rowwise() %>%
+  mutate(award_score = ifelse(Oscar_Information_imdb %in% names(award_weights), award_weights[Oscar_Information_imdb], 0)) %>%
+  ungroup()
+
+# Calculate the number of movies each director has directed in the data set
+director_movie_count <- data_final %>%
+  group_by(Director_imdb) %>%
+  summarise(movie_count = n())
+
+# Calculate the total award score for each director in the data set
+director_award_score <- data_final %>%
+  group_by(Director_imdb) %>%
+  summarise(total_award_score = sum(award_score))
+
+# Aggregate wins and nominations for each director for movies in the data set
+director_awards_nominations <- data_final %>%
+  group_by(Director_imdb) %>%
+  summarise(
+    total_wins = sum(wins, na.rm = TRUE),
+    total_nominations = sum(nominations, na.rm = TRUE)
+  )
+
+director_metrics <- director_movie_count %>%
+  left_join(director_award_score, by = "Director_imdb") %>%
+  left_join(director_awards_nominations, by = "Director_imdb")
+
+# Normalize wins and nominations to ensure that many small awards don't overshadow big ones. I want the importan awards to still have weight.
+director_metrics <- director_metrics %>%
+  mutate(
+    normalized_wins = total_wins / max(total_wins, na.rm = TRUE),
+    normalized_nominations = total_nominations / max(total_nominations, na.rm = TRUE)
+  )
+
+# combined director score
+director_metrics <- director_metrics %>%
+  mutate(
+    combined_director_score = movie_count + total_award_score + normalized_wins * 10 + normalized_nominations * 5
+  )
+
+# Normalize the combined director score 
+director_metrics <- director_metrics %>%
+  mutate(
+    min_score = min(combined_director_score, na.rm = TRUE),
+    max_score = max(combined_director_score, na.rm = TRUE),
+    normalized_director_score = (combined_director_score - min_score) / (max_score - min_score)
+  ) %>%
+  select(-min_score, -max_score)
+
+# Merge the normalized director score back into the original data_final
+data_final <- data_final %>%
+  left_join(director_metrics, by = "Director_imdb")
+
+
+```
+
+```{r}
+columns_to_remove <- c("wins", "nominations", "award_score", "movie_count", "total_award_score", 
+                       "total_wins", "total_nominations", "normalized_wins", "normalized_nominations", 
+                       "combined_director_score", "Oscar_Information_imdb", "AwardsAndNominations_imdb")
+
+data_final <- data_final %>%
+  select(-all_of(columns_to_remove))
+```
+
+### Gender
+Let's  fix the gender variable and complete the Na's
+
+
+
+
+
+### Sentiment Analysis of Reviews
+
+Let´s start with the Reviews Variable.
+
+-   TitleReview_imdb
+
+-   FeatureReview_imdb
+
+-   top_critic_review_1_rt
+
+-   top_critic_review_2_rt
+
+-   audience_review_1_rt
+
+-   audience_review_2_rt
+
+```{r}
+data <- data_final %>%
+  select(imdb_id, TitleReview_imdb, FeatureReview_imdb, top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt)
+
+```
+
+```{r}
+# Function to calculate sentiment score using sentimentr
+get_sentiment <- function(text) {
+  if (is.na(text) || length(text) == 0) {
+    return(NA)
+  } else {
+    sentiment <- sentiment(text)
+    return(mean(sentiment$sentiment))
+  }
+}
+
+# Apply the function to each review column, excluding 'imdb_id'
+data <- data %>%
+  mutate(across(c(TitleReview_imdb, FeatureReview_imdb, top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt), 
+                ~ map_dbl(.x, get_sentiment), .names = "{col}_sentiment"))
+
+```
+
+Let's check that the analysis is done correctly using the title and the review of imdb.
+
+```{r}
+# Select specific columns and store them in a new tibble
+data_check <- data_final %>%
+  select(imdb_id, TitleReview_imdb, FeatureReview_imdb)
+
+
+# Apply the function to the TitleReview_imdb and FeatureReview_imdb columns
+data_check <- data_check %>%
+  mutate(TitleReview_imdb_sentiment = map_dbl(TitleReview_imdb, get_sentiment),
+         FeatureReview_imdb_sentiment = map_dbl(FeatureReview_imdb, get_sentiment))
+
+# Function to classify sentiment
+classify_sentiment <- function(score) {
+  if (is.na(score)) {
+    return("Neutral")
+  } else if (score > 0.2) {
+    return("Positive")
+  } else if (score < -0.2) {
+    return("Negative")
+  } else {
+    return("Neutral")
+  }
+}
+
+# Classify the sentiment scores
+data_check <- data_check %>%
+  mutate(TitleReview_imdb_class = sapply(TitleReview_imdb_sentiment, classify_sentiment),
+         FeatureReview_imdb_class = sapply(FeatureReview_imdb_sentiment, classify_sentiment))
+
+# Check if the sentiment alignment is correct
+data_check <- data_check %>%
+  mutate(sentiment_alignment = case_when(
+    TitleReview_imdb_class == FeatureReview_imdb_class ~ "Aligned",
+    TitleReview_imdb_class == "Neutral" | FeatureReview_imdb_class == "Neutral" ~ "Aligned",
+    TRUE ~ "Not Aligned"
+  ))
+
+# Display the result
+print(data_check)
+
+```
+
+Now we are going to use the average to create the overall sentiment score for the reviews of the each movie.
+
+```{r}
+# Calculate the overall sentiment score as the mean of all sentiment scores
+data <- data %>%
+  rowwise() %>%
+  mutate(overall_sentiment_score = mean(c_across(ends_with("_sentiment")), na.rm = TRUE)) %>%
+  ungroup()
+
+# Display the result
+print(data)
+
+```
+
+
