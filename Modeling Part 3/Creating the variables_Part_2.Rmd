@@ -1,0 +1,186 @@
+---
+title: "Creating the variables_Part_2"
+author: "Sofia Villamil"
+date: "2024-06-12"
+output: html_document
+---
+
+# Creation of the final variables we are going to use in this analysis
+
+### Actor
+
+We need more variables to get a better rating for each actor, becuase I believe we need specific information about each actor not just for each movie. We are going to go back to scrapping IMDB using the same code but for an actor now.
+
+```{r}
+rm(list = ls())
+```
+
+```{r message=FALSE}
+library(tidyr)
+library(rvest)
+library(dplyr)
+library(readr)
+library(stringr)
+library(parallel)
+library(httr)
+library(foreach)
+library(doParallel)
+```
+
+```{r}
+set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here
+```
+
+```{r message=FALSE}
+data_final_6 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_6.csv", show_col_types = FALSE)
+data_final_6 <- data_final_6[, -1]
+
+```
+
+Data set with the actors
+```{r}
+actors <- data_final_6 %>% select(imdb_id,FirstActor_imdb, SecondActor_imdb)
+
+nombres2 <- actors %>%
+  pivot_longer(cols = -imdb_id, names_to = "type", values_to = "name") %>%
+  select(imdb_id, name) 
+
+# eliminate duplicated names
+nombres2 <- nombres2[!duplicated(nombres2$name), ]
+```
+
+### Geting the Id's
+We do not have the id's for the actors as we had for the movies, this is why we are going to implement something a little different. We will create a code to search the name and get the id from the first name it appears and then we save it.
+```{r}
+nombres <- nombres2[1:10,] #Set the number of actors we want to scrap the id's 
+```
+
+```{r}
+# Function to get IMDb ID for an actor
+get_imdb_id <- function(actor_name) {
+     Sys.sleep(runif(1, min = 1, max = 3))
+    search_url <- paste0("https://www.imdb.com/find?q=", URLencode(actor_name), "&s=nm")
+  search_page <- tryCatch(read_html(search_url), error = function(e) NULL)
+  
+  if (is.null(search_page)) {
+    return(NA)
+  }
+  
+  actor_link <- search_page %>%
+    html_node('.ipc-metadata-list-summary-item__t') %>%
+    html_attr('href')
+  
+  if (is.na(actor_link) || is.null(actor_link)) {
+    return(NA)
+  }
+  
+  actor_id <- str_match(actor_link, "/name/(nm[0-9]+)/")[, 2]
+  return(actor_id)
+}
+
+num_cores <- detectCores() - 1
+
+# parallel processing
+cl <- makeCluster(num_cores)
+invisible(clusterEvalQ(cl, {
+  library(rvest)
+  library(dplyr)
+  library(stringr)
+}))
+
+clusterExport(cl, c("get_imdb_id", "URLencode", "read_html", "str_match", "html_node", "html_attr", "tryCatch"))
+nombres$actor_id_imdb <- parSapply(cl, nombres$name, get_imdb_id)
+
+stopCluster(cl)
+
+```
+
+```{r}
+write.csv(nombres, "actors_with_imdb_ids_2.csv", row.names = FALSE)
+```
+
+Set the number of actors we want to scrap
+```{r}
+nombres3 <-nombres[1:10, ]
+```
+
+### Starting the Scrapping 
+
+We have the id's so what we are going to do now is get the url and the variables that we want.
+```{r}
+# Function to scrape IMDb actor page
+scrape_imdb_actor <- function(actor_id) {
+  url <- paste0("https://www.imdb.com/name/", actor_id)
+  
+  tryCatch({
+    actor_page <- read_html(url)
+    
+    # Extract awards and nominations
+    awards_and_nominations <- actor_page %>%
+      html_node('span.ipc-metadata-list-item__list-content-item') %>%
+      html_text() %>%
+      trimws()
+    
+    # Extract Oscars nominations
+    oscars_nominations <- actor_page %>%
+      html_node('a.ipc-metadata-list-item__label--link[aria-label="See more awards and nominations"]') %>%
+      html_text() %>%
+      trimws()
+    
+    # Extract number of movies
+number_of_movies <- actor_page %>%
+  html_nodes(xpath = '//ul/li[contains(text(), "Previous")]/following-sibling::li[@class="ipc-inline-list__item credits-total"]') %>%
+  html_text() %>%
+  as.numeric() %>%
+  .[1]   
+
+    # Return a data frame
+    data.frame(
+      actor_id_imdb = actor_id,
+      awards_and_nominations = awards_and_nominations,
+      oscars_nominations = oscars_nominations,
+      number_of_movies = number_of_movies,
+      stringsAsFactors = FALSE
+    )
+  }, error = function(e) {
+    message(paste("Error scraping actor ID:", actor_id, "Error:", e$message))
+    return(data.frame(
+      actor_id_imdb = actor_id,
+      awards_and_nominations = NA,
+      oscars_nominations = NA,
+      number_of_movies = NA,
+      stringsAsFactors = FALSE
+    ))
+  })
+}
+
+# Register parallel backend
+num_cores <- detectCores() - 1
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
+
+# Scrape IMDb data in parallel with sleep
+results <- foreach(i = 1:nrow(nombres3), .combine = rbind, .packages = c("rvest", "dplyr")) %dopar% {
+  actor_id <- nombres3$actor_id_imdb[i]
+  Sys.sleep(sample(1:3, 1)) # Sleep for 1 to 3 seconds randomly
+  scrape_imdb_actor(actor_id)
+}
+
+# Stop the cluster
+stopCluster(cl)
+
+# Merge the scraped data with the original nombres dataframe
+final_df <- nombres3 %>%
+  left_join(results, by = "actor_id_imdb")
+
+```
+
+```{r}
+final_df_2 <- final_df[!duplicated(final_df$actor_id_imdb), ]
+
+write.csv(final_df_2, "actors_with_imdb.csv", row.names = FALSE)
+
+```
+
+We will continue to the next script called "Creating the variables_Part_3"
+

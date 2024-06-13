@@ -124,8 +124,11 @@ is_na2 <- is_na2 %>% distinct(imdb_id, .keep_all = TRUE) # there are some duplic
 write.csv(is_na2,"C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_ids_1.csv")
 
 ```
+We have the id and we save it. Now we proceed to the next part.
 
-This part needs to be done in sets of titles so we do not affect the website. I did it in chunks of 300 movies. You start with is 1:300 and continue on till you reach the last observations
+### Scrapping the variables
+
+This part needs to be done in sets of movies, so we do not affect the website. I did it in chunks of 300 movies. You start with is 1:300 and continue on till you reach the last observations
 
 ```{r}
 chunck <- is_na2[1:10, ]
@@ -208,4 +211,4 @@ write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational
 
 ```
 
-This is the last scrapping script. Now we move on to the Modeling Part 3 file where we will start with the script "Creating the variables_Part_1"
+This is the last scrapping script of this file. Now we move on to the Modeling Part 3 file where we will start with the script "Creating the variables_Part_1"

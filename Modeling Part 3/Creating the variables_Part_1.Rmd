@@ -13,12 +13,15 @@ rm(list = ls())
 
 #### Libraries
 
-```{r}
+```{r message=FALSE}
 library(readr)
 library(caret)
 library(tidyverse)
 library(sentimentr) # for the sentiment analysis
 library(lubridate) # for release data
+library(scales)
+library(stringr)
+library(tidyr)
 ```
 
 ```{r}
@@ -226,15 +229,6 @@ data_final <- data_final %>%
   select(-release_date, -season_)
 ```
 
-### Budget
-
-There are a lot of NA's in budget and I believe that imputing will affect the final results, so I have decided to eliminate this variable.
-
-```{r}
-na_count <- sum(is.na(data_final$Budget))
-na_count
-```
-
 ### Production Companies
 
 There are a lot of production companies that appear 1 time in the data set. This is not going to bring little to no insight into the analysis as we do not have enough observations for each so I have decided to eliminate it.
@@ -317,6 +311,7 @@ selected_data2 <- data_final %>%
 ### Score
 
 We are going to create a combined score, using the three scores attained and the total voting for those score.
+
 ```{r}
 # First we normalize IMDb scores to a 0-100 scale equal to the rt one.
 data_final <- data_final %>%
@@ -379,7 +374,6 @@ data_final <- data_final %>%
   )
 ```
 
-
 ```{r}
 data_final <- data_final %>%
   select(-min_combined_score, -max_combined_score, -IMDbscore_imdb, -imdb_score_normalized,
@@ -390,7 +384,7 @@ data_final <- data_final %>%
 
 ```
 
-# Director
+### Director
 
 Let's start with cleaning the variable for the Oscars.
 
@@ -403,7 +397,7 @@ oscar_summary <- data_final %>%
 
 ```
 
-The top awards will be given waits based on this list (Link:https://www.therichest.com/luxury/top-10-most-prestigious-movie-awards-in-the-world/)
+The top awards will be given waits based on this list (Link:<https://www.therichest.com/luxury/top-10-most-prestigious-movie-awards-in-the-world/>)
 
 ```{r}
 award_weights <- c(
@@ -432,9 +426,17 @@ award_weights <- c(
 )
 
 ```
+
+```{r}
+data_final <- data_final %>%
+  mutate(Oscar_Information_imdb = ifelse(Oscar_Information_imdb == "Awards", "No Major Awards", Oscar_Information_imdb))
+
+```
+
 Taking into account that I will also get the number of awards and nominations.
 
 Now we will clean the Awards and nomination variables
+
 ```{r}
 unique_awards_nominations <- data_final %>%
   select(AwardsAndNominations_imdb) %>%
@@ -443,6 +445,7 @@ unique_awards_nominations <- data_final %>%
 ```
 
 Cleaning the column as the movies with no awards need to be cleaned to represent that.
+
 ```{r}
 data_final <- data_final %>%
   mutate(
@@ -461,8 +464,8 @@ data_final <- data_final %>%
                   as.numeric(str_extract(AwardsAndNominations_imdb, "\\d+(?=\\s+win|\\s+wins)")), 0),
     nominations = ifelse(AwardsAndNominations_imdb != "No Awards", 
                          as.numeric(str_extract(AwardsAndNominations_imdb, "\\d+(?=\\s+nomination|\\s+nominations)")), 0)
-  )
-
+  ) %>% 
+  replace_na(list(wins = 0, nominations = 0))
 
 ```
 
@@ -534,108 +537,94 @@ data_final <- data_final %>%
 ```
 
 ### Gender
-Let's  fix the gender variable and complete the Na's
 
-
-
-
-
-### Sentiment Analysis of Reviews
-
-Let´s start with the Reviews Variable.
-
--   TitleReview_imdb
-
--   FeatureReview_imdb
-
--   top_critic_review_1_rt
-
--   top_critic_review_2_rt
-
--   audience_review_1_rt
-
--   audience_review_2_rt
+Let's fix the gender variable and complete the Na's.
 
 ```{r}
-data <- data_final %>%
-  select(imdb_id, TitleReview_imdb, FeatureReview_imdb, top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt)
+# Filter rows where director_is_a_woman is NA
+directors_with_missing_gender <- data_final %>%
+  filter(is.na(director_is_woman)) %>%
+  select(Director_imdb) %>%
+  distinct()
 
+print(directors_with_missing_gender)
 ```
 
 ```{r}
-# Function to calculate sentiment score using sentimentr
-get_sentiment <- function(text) {
-  if (is.na(text) || length(text) == 0) {
-    return(NA)
-  } else {
-    sentiment <- sentiment(text)
-    return(mean(sentiment$sentiment))
-  }
-}
+# List of women directors based on the provided by the chat that looked into 600 names
+women_directors <- c(
+  "Gaysorn Thavat", "Anca Miruna Lazarescu", "Armagan Ballantyne", "Soudade Kaadan",
+  "Vesela Kazakova", "Luàna Bajrami", "Neus Ballús", "Erige Sehiri", "Amélie van Elmbt",
+  "Kiruthiga Udhayanidhi", "Gunhild Magnor", "Kurdwin Ayub", "Manane Rodríguez",
+  "Senem Tüzen", "Coky Giedroyc", "Kestrin Pantera", "Cláudia Varejão", "Heiward Mak",
+  "Oeke Hoogendijk", "Valérie Massadian", "Feihong Chen", "Lucía Garibaldi", 
+  "Anne-Lise Koehler", "Hnin Ei Hlaing", "Ramata-Toulaye Sy", "Ángeles Cruz",
+  "Tizza Covi", "Becs Arahanga", "Aitch Alberto", "Naziha Arebi", "Eun-Jeong Yu",
+  "Tanwarin Sukkhapisit"
+)
 
-# Apply the function to each review column, excluding 'imdb_id'
-data <- data %>%
-  mutate(across(c(TitleReview_imdb, FeatureReview_imdb, top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt), 
-                ~ map_dbl(.x, get_sentiment), .names = "{col}_sentiment"))
+data_final$director_is_woman <- ifelse(data_final$Director_imdb %in% women_directors, 1, 0)
 
+data_final$director_is_woman[is.na(data_final$Director_imdb)] <- NA
 ```
 
-Let's check that the analysis is done correctly using the title and the review of imdb.
+Now for the Lead is a Woman
 
 ```{r}
-# Select specific columns and store them in a new tibble
-data_check <- data_final %>%
-  select(imdb_id, TitleReview_imdb, FeatureReview_imdb)
+# Filter rows where director_is_a_woman is NA
+actor_with_missing_gender <- data_final %>%
+  filter(is.na(lead_is_woman)) %>%
+  select(FirstActor_imdb) %>%
+  distinct()
 
-
-# Apply the function to the TitleReview_imdb and FeatureReview_imdb columns
-data_check <- data_check %>%
-  mutate(TitleReview_imdb_sentiment = map_dbl(TitleReview_imdb, get_sentiment),
-         FeatureReview_imdb_sentiment = map_dbl(FeatureReview_imdb, get_sentiment))
-
-# Function to classify sentiment
-classify_sentiment <- function(score) {
-  if (is.na(score)) {
-    return("Neutral")
-  } else if (score > 0.2) {
-    return("Positive")
-  } else if (score < -0.2) {
-    return("Negative")
-  } else {
-    return("Neutral")
-  }
-}
-
-# Classify the sentiment scores
-data_check <- data_check %>%
-  mutate(TitleReview_imdb_class = sapply(TitleReview_imdb_sentiment, classify_sentiment),
-         FeatureReview_imdb_class = sapply(FeatureReview_imdb_sentiment, classify_sentiment))
-
-# Check if the sentiment alignment is correct
-data_check <- data_check %>%
-  mutate(sentiment_alignment = case_when(
-    TitleReview_imdb_class == FeatureReview_imdb_class ~ "Aligned",
-    TitleReview_imdb_class == "Neutral" | FeatureReview_imdb_class == "Neutral" ~ "Aligned",
-    TRUE ~ "Not Aligned"
-  ))
-
-# Display the result
-print(data_check)
-
+print(actor_with_missing_gender)
 ```
-
-Now we are going to use the average to create the overall sentiment score for the reviews of the each movie.
 
 ```{r}
-# Calculate the overall sentiment score as the mean of all sentiment scores
-data <- data %>%
-  rowwise() %>%
-  mutate(overall_sentiment_score = mean(c_across(ends_with("_sentiment")), na.rm = TRUE)) %>%
-  ungroup()
+# List of women actors based on the provided names
+women_actors <- c(
+  "Chia-Yen Ko", "Elín Hall", "LisaGay Hamilton", "Gwei Lun-Mei", "Karelle Tremblay",
+  "Thitiya Jirapornsilp", "Nuria Giménez", "Algi Eke", "Huifang Duan", "Jyotika",
+  "Fala Chen", "Ladya Cheryl", "Gong Linna", "Kinuko Tanida", "Luàna Bajrami",
+  "Bipasha Basu", "Yile Yara Vianello", "Jowita Budnik", "Moa Stefansdotter",
+  "Ameni Fdhili", "Iride Mockert", "Dextina Booker", "Mbong Amata", "Suhaee Abro",
+  "Amber Fares", "Delfine Bafort", "Chuan-Ying Chuang", "Youssra", "Mbissine Thérèse Diop",
+  "María Fux", "Kristii Schneider", "Gerlinde Kaltenbrunner", "Lola Arias",
+  "Hong-Anh", "Awatea Mita", "Jill Li", "Thishiwe Ziqubu", "Musetta Vander",
+  "Preity G Zinta", "Hennika Huuse", "Freny Bhagat", "Yunjin Cao", "Shehr Ali",
+  "Angdu Padma", "Woseser Tsering", "Tanaquil Le Clerq", "Fine Sendel", "Mãlina Manovici",
+  "Parineeti Chopra", "Ha Le Diem", "Hnin Ei Hlaing", "Anaita Wali Zada",
+  "Trien de Haan-Zwagerman", "Paca Molera Pereira", "Dada Chan", "Ro Mereani Adi Tuimatanisiga",
+  "Whirimako Black", "Mía Maestro", "Shamira Raphaela", "Inês Sá Frias",
+  "Gcina Mhlophe", "Crystal-Donna Roberts", "Meezaan Jafri", "Anzhelika Hakobyan",
+  "Basê Dogan", "Hyomin", "Cindy Jansen", "Nisrine Amine", "Kovai Sarala",
+  "Rhae-Kye Waites", "Magdaléna Borová"
+)
 
-# Display the result
-print(data)
+data_final$lead_is_woman <- ifelse(data_final$FirstActor_imdb %in% women_actors, 1, 0)
+
+data_final$lead_is_woman[is.na(data_final$FirstActor_imdb)] <- NA
+```
+### Budget
+
+There are a lot of NA's in budget and I believe that imputing will affect the final results, so I have decided to eliminate this variable.
+
+```{r}
+na_count <- sum(is.na(data_final$Budget))
+na_count
+```
+
+We have decided that the best course of action is to eliminate the rows with NA values in the Budget column. Due to establishing that the dependent variable will be based on the literature reviews and how the majority of the papers treat the dependent variable, we have made the decision that all the movies without a budget will not be considered. Considering our previous work on the success variable, which was created to have a sense of what could be considered a successful movie, it is essential to ensure the accuracy of our data. Ignoring the budget in our metric for the dependent variable could result in movies with negative profits being incorrectly classified as successes with what we could observed happen with that variable. 
+
+```{r}
+data_final2<- data_final %>%
+  filter(!is.na(Budget))
+```
+
+```{r}
+write.csv(data_final2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_6.csv")
 
 ```
 
+We will continue now with the variables for the actors in the next script called "Creating the variables_Part_2"
 
