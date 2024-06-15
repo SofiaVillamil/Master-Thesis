@@ -1,0 +1,208 @@
+---
+title: "Scrapping for Budget"
+author: "Sofia Villamil"
+date: "2024-06-10"
+output: html_document
+---
+
+### SCRAPPING THE NUMBERS
+
+We need to get the budget to have a specific determination of if a movie was successful or not. This is why we are going to scrap the budget information for the Numbers (Link: <https://www.the-numbers.com/>).
+
+```{r}
+rm(list = ls())
+```
+
+```{r}
+set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here
+```
+
+#### Library
+
+```{r}
+library(readr)
+library(lubridate) # for release data
+library(tidyverse)
+library(rvest)
+library(httr)
+library(dplyr)
+library(foreach)
+library(doParallel)
+```
+
+```{r}
+data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_3.csv", show_col_types = FALSE)
+
+```
+
+I need the year for the scrapping
+
+```{r}
+data <- data %>%
+  mutate(release_date = dmy(release_date))%>%
+  mutate(release_year = year(release_date))
+```
+
+#### Titles with Na's in their Budget
+
+```{r}
+na_titles <- data %>% 
+  filter(is.na(Budget)) %>% 
+  select(title,imdb_id,release_year)
+```
+
+```{r}
+na_titles <- na_titles[1:14808,]
+```
+
+#### Scrapping Functions
+
+```{r}
+# Function to create the URL with release year in brackets
+create_movie_url_with_year <- function(title, release_year) {
+  base_url <- "https://www.the-numbers.com/movie/"
+  formatted_title <- gsub("[^A-Za-z0-9]", "-", title)
+  url <- paste0(base_url, formatted_title, "-(", release_year, ")#tab=summary")
+  return(url)
+}
+
+# Function to move "The" to the end of the title
+move_the_to_end <- function(title) {
+  if (startsWith(title, "The ")) {
+    title <- sub("^The (.+)", "\\1-The", title)
+  }
+  return(title)
+}
+
+create_movie_url_with_the <- function(title) {
+  base_url <- "https://www.the-numbers.com/movie/"
+  formatted_title <- gsub("[^A-Za-z0-9]", "-", move_the_to_end(title))
+  url <- paste0(base_url, formatted_title, "#tab=summary")
+  return(url)
+}
+
+# Function to scrape budget
+scrape_budget <- function(title, year) {
+  url <- create_movie_url_with_year(title, year)
+  print(paste("Scraping URL:", url)) 
+  webpage <- tryCatch({
+    read_html(url)
+  }, error = function(e) {
+    message(paste("Failed to read URL:", url))
+    return(NULL)
+  })
+  
+  if (is.null(webpage)) {
+    return(NA)
+  }
+
+  budget <- tryCatch({
+    result <- webpage %>%
+      html_nodes(xpath = "//tr[td/b[contains(text(),'Production')]]/td[2]") %>%
+      html_text() %>%
+      str_extract("\\$[\\d,]+") %>%
+      gsub("[\\$,]", "", .) %>%
+      as.numeric()
+    if(length(result) > 0) result[1] else NA
+  }, error = function(e) {
+    message(paste("Failed to extract budget for:", title, "(", year, ")"))
+    return(NA)
+  })
+
+  if (is.na(budget)) {
+    message(paste("Budget not found for:", title, "(", year, ")"))
+  }
+  
+  return(budget)
+}
+
+scrape_budget_alternative <- function(title) {
+  url <- create_movie_url_with_the(title)
+  print(paste("Scraping alternative URL:", url)) 
+  
+  webpage <- tryCatch({
+    read_html(url)
+  }, error = function(e) {
+    message(paste("Failed to read alternative URL:", url))
+    return(NULL)
+  })
+  
+  if (is.null(webpage)) {
+    return(NA)
+  }
+
+  budget <- tryCatch({
+    result <- webpage %>%
+      html_nodes(xpath = "//tr[td/b[contains(text(),'Production')]]/td[2]") %>%
+      html_text() %>%
+      str_extract("\\$[\\d,]+") %>%
+      gsub("[\\$,]", "", .) %>%
+      as.numeric()
+    if(length(result) > 0) result[1] else NA
+  }, error = function(e) {
+    message(paste("Failed to extract budget for:", title))
+    return(NA)
+  })
+
+  if (is.na(budget)) {
+    message(paste("Budget not found for:", title))
+  }
+  
+  return(budget)
+}
+
+# Speed things up using parallel processing
+num_cores <- detectCores() - 1
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
+
+results <- foreach(i = 1:nrow(na_titles), .combine = rbind, .packages = c('rvest', 'stringr')) %dopar% {
+  title <- na_titles$title[i]
+  imdb_id <- na_titles$imdb_id[i]
+  release_year <- na_titles$release_year[i]
+  budget <- scrape_budget(title, release_year)
+  Sys.sleep(1)  
+  data.frame(title = title, imdb_id = imdb_id, release_year = release_year, Budget = budget, stringsAsFactors = FALSE)
+}
+
+# Filter out the movies with NA Budget
+retry_na_titles <- results %>%
+  filter(is.na(Budget))
+
+retry_results <- foreach(i = 1:nrow(retry_na_titles), .combine = rbind, .packages = c('rvest', 'stringr')) %dopar% {
+  title <- retry_na_titles$title[i]
+  imdb_id <- retry_na_titles$imdb_id[i]
+  budget <- scrape_budget_alternative(title)
+  Sys.sleep(1)
+  data.frame(title = title, imdb_id = imdb_id, Budget = budget, stringsAsFactors = FALSE)
+}
+
+# Combine the results
+final_results <- results %>%
+  left_join(retry_results, by = c("title", "imdb_id"), suffix = c("", "_retry")) %>%
+  mutate(Budget = ifelse(is.na(Budget), Budget_retry, Budget)) %>%
+  select(-Budget_retry)
+
+stopCluster(cl)
+```
+
+```{r}
+write.csv(final_results, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/scrapping_url_1.csv",row.names = FALSE)
+
+```
+
+#### Joining the data set and saving
+
+```{r}
+merged_data <- data %>%
+  left_join(final_results, by = "imdb_id", suffix = c("", "_scraped")) %>%
+  mutate(Budget = ifelse(is.na(Budget), Budget_scraped, Budget)) %>%
+  select(-Budget_scraped,-title_scraped, - release_year)
+```
+
+```{r}
+write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_3.csv",row.names = FALSE)
+
+```
+
+We are going now to continue with the script "Data Cleaning_Part_5"
