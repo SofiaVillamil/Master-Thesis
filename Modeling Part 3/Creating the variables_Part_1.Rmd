@@ -599,7 +599,7 @@ data_final$lead_is_woman[is.na(data_final$FirstActor_imdb)] <- NA
 
 
 ```{r}
-write.csv(data_final, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_6.csv")
+#write.csv(data_final, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_6.csv")
 
 ```
 

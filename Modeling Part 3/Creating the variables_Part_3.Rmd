@@ -29,7 +29,7 @@ data_final_6 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computation
 ```{r}
 movies2 <- data_final_6 %>% select(imdb_id, title)
 
-write.csv(movies2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/Youtube and Instagram Data/data_final_movies.csv",row.names = FALSE)
+#write.csv(movies2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/Youtube and Instagram Data/data_final_movies.csv",row.names = FALSE)
 
 ```
 
@@ -43,7 +43,7 @@ data_filtered <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computatio
 ```{r}
 nombres <- data_filtered %>% select(name)
 
-write.xlsx(nombres, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/Youtube and Instagram Data/data_final_actores_full.xlsx", rowNames = FALSE)
+#write.xlsx(nombres, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/Youtube and Instagram Data/data_final_actores_full.xlsx", rowNames = FALSE)
 
 ```
 

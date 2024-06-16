@@ -374,7 +374,7 @@ data_final_dd <- data_final_6 %>% select(title, overall_sentiment_class, overall
 ```
 
 ```{r}
-write.csv(data_final_6, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Final Part 4/data_final_7.csv", row.names = FALSE)
+#write.csv(data_final_6, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Final Part 4/data_final_7.csv", row.names = FALSE)
 ```
 
 Now we continue to the script called Model_Part_2
