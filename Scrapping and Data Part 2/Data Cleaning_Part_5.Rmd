@@ -1,5 +1,5 @@
 ---
-title: "Instagram Scrapping_Part_5"
+title: "Data Cleaning_Part_5"
 author: "Sofia Villamil"
 date: "2024-06-06"
 output: html_document
@@ -106,28 +106,4 @@ write.csv(data_filtered_3, "C:/Users/sofia/Documents/Documentos/Master Computati
 
 ```
 
-### Data set samples for Scrapping in Instagram with python script
-
-```{r}
-movies2 <- data_filtered_3 %>% select(imdb_id, title)
-
-write.csv(movies2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_movies.csv",row.names = FALSE)
-
-```
-
-```{r}
-# Selecting now a data set with all the actors
-movies3 <- data_filtered_3 %>% select(imdb_id,FirstActor_imdb, SecondActor_imdb)
-
-nombres <- movies3 %>%
-  pivot_longer(cols = -imdb_id, names_to = "type", values_to = "name") %>%
-  select(imdb_id, name) 
-
-# eliminate duplicated names
-nombres <- nombres[!duplicated(nombres$name), ]
-
-write.xlsx(nombres,"C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_actores_full.xlsx",row.Names = FALSE)
-
-```
-
-We will now continue with the Instagram Script and the Youtube Script. They are python scripts called "Instagram Test_Part_6" and "YoutubeScrapping_Part_7". After this scripts we will come back to the R scripts for the last scrapping script called "Scrapping TMDB selected movies_Part_8".
+After this script we will now go to the last scrapping script called "Scrapping TMDB selected movies_Part_6".

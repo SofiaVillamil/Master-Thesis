@@ -9,7 +9,7 @@ output: html_document
 
 ### Actor
 
-We need more variables to get a better rating for each actor, becuase I believe we need specific information about each actor not just for each movie. We are going to go back to scrapping IMDB using the same code but for an actor now.
+We need more variables to get a better rating for each actor, because I believe we need specific information about each actor not just for each movie. We are going to go back to scrapping IMDB using the same code but for an actor now.
 
 ```{r}
 rm(list = ls())
@@ -49,7 +49,7 @@ nombres2 <- actors %>%
 nombres2 <- nombres2[!duplicated(nombres2$name), ]
 ```
 
-### Geting the Id's
+### Getting the Id's
 We do not have the id's for the actors as we had for the movies, this is why we are going to implement something a little different. We will create a code to search the name and get the id from the first name it appears and then we save it.
 ```{r}
 nombres <- nombres2[1:10,] #Set the number of actors we want to scrap the id's 
@@ -96,7 +96,7 @@ stopCluster(cl)
 ```
 
 ```{r}
-write.csv(nombres, "actors_with_imdb_ids_2.csv", row.names = FALSE)
+write.csv(nombres, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/actors_with_imdb_ids_2.csv", row.names = FALSE)
 ```
 
 Set the number of actors we want to scrap
@@ -108,26 +108,22 @@ nombres3 <-nombres[1:10, ]
 
 We have the id's so what we are going to do now is get the url and the variables that we want.
 ```{r}
-# Function to scrape IMDb actor page
 scrape_imdb_actor <- function(actor_id) {
   url <- paste0("https://www.imdb.com/name/", actor_id)
   
   tryCatch({
     actor_page <- read_html(url)
     
-    # Extract awards and nominations
     awards_and_nominations <- actor_page %>%
       html_node('span.ipc-metadata-list-item__list-content-item') %>%
       html_text() %>%
       trimws()
     
-    # Extract Oscars nominations
     oscars_nominations <- actor_page %>%
       html_node('a.ipc-metadata-list-item__label--link[aria-label="See more awards and nominations"]') %>%
       html_text() %>%
       trimws()
     
-    # Extract number of movies
 number_of_movies <- actor_page %>%
   html_nodes(xpath = '//ul/li[contains(text(), "Previous")]/following-sibling::li[@class="ipc-inline-list__item credits-total"]') %>%
   html_text() %>%
@@ -154,22 +150,18 @@ number_of_movies <- actor_page %>%
   })
 }
 
-# Register parallel backend
 num_cores <- detectCores() - 1
 cl <- makeCluster(num_cores)
 registerDoParallel(cl)
 
-# Scrape IMDb data in parallel with sleep
 results <- foreach(i = 1:nrow(nombres3), .combine = rbind, .packages = c("rvest", "dplyr")) %dopar% {
   actor_id <- nombres3$actor_id_imdb[i]
-  Sys.sleep(sample(1:3, 1)) # Sleep for 1 to 3 seconds randomly
+  Sys.sleep(sample(1:3, 1)) 
   scrape_imdb_actor(actor_id)
 }
 
-# Stop the cluster
 stopCluster(cl)
 
-# Merge the scraped data with the original nombres dataframe
 final_df <- nombres3 %>%
   left_join(results, by = "actor_id_imdb")
 
@@ -178,9 +170,13 @@ final_df <- nombres3 %>%
 ```{r}
 final_df_2 <- final_df[!duplicated(final_df$actor_id_imdb), ]
 
-write.csv(final_df_2, "actors_with_imdb.csv", row.names = FALSE)
+write.csv(nuevo, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/actors_with_imdb.csv", row.names = FALSE)
 
 ```
 
 We will continue to the next script called "Creating the variables_Part_3"
+
+
+
+
 

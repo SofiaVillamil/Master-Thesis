@@ -17,7 +17,6 @@ rm(list = ls())
 library(readr)
 library(caret)
 library(tidyverse)
-library(sentimentr) # for the sentiment analysis
 library(lubridate) # for release data
 library(scales)
 library(stringr)
@@ -29,6 +28,22 @@ data_final <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational
 
 data_final <- data_final %>%
   select(-title_rt,-title_scraped,-MovieID)
+```
+
+### Budget
+
+There are a lot of NA's in budget and I believe that imputing will affect the final results, so I have decided to eliminate this variable.
+
+```{r}
+na_count <- sum(is.na(data_final$Budget))
+na_count
+```
+
+We have decided that the best course of action is to eliminate the rows with NA values in the Budget column. Due to establishing that the dependent variable will be based on the literature reviews and how the majority of the papers treat the dependent variable, we have made the decision that all the movies without a budget will not be considered. Considering our previous work on the success variable, which was created to have a sense of what could be considered a successful movie, it is essential to ensure the accuracy of our data. Ignoring the budget in our metric for the dependent variable could result in movies with negative profits being incorrectly classified as successes with what we could observed happen with that variable. 
+
+```{r}
+data_final<- data_final %>%
+  filter(!is.na(Budget))
 ```
 
 ### Genre
@@ -43,35 +58,39 @@ unique_genres <- data_final %>%
 Checked individually the most unique genres and look into the titles
 
 ```{r}
-unique_genres <- data_final %>%
+unique_genres2 <- data_final %>%
   select(title, Genre_imdb) %>%
-  filter(Genre_imdb == "Romance")
-unique_genres
+  filter(Genre_imdb == "Sci-Fi")
 ```
 
-We are going to reduce the types of genre to the main one by using Rotten Tomatoes genres
+We are going to reduce the types of genre to the main one by using Rotten Tomatoes genres also
 
 ```{r}
 # Update the genre for the movie
 data_final <- data_final %>%
   mutate(Genre_imdb = case_when(
-    title == "Bennett's War" ~ "Drama",
-    title == "Sympathy for the Devil" ~ "Thriller",
-    title == "D-Day Assassins" ~ "Drama",
-    title == "Nefta Football Club" ~ "Comedy",
-    title == "The Neighbors' Window" ~ "Drama",
-    title == "The Staggering Girl" ~ "Drama",
-    title == "Strange Way of Life" ~ "Romance",
-    Genre_imdb == "History" ~ "Drama",
+    title == "The Boy Next Door" ~ "Mystery",
+    title == "The Bar" ~ "Mystery",
+    title == "97 Minutes" ~ "Mystery",
+    title == "A Christmas Star" ~ "Adventure",
+    title == "App" ~ "Mystery",
     TRUE ~ Genre_imdb
   ))
 
 ```
 
+The rest we eliminate.
+```{r}
+data_final <- data_final %>%
+  group_by(Genre_imdb) %>%
+  filter(n() > 1) %>%
+  ungroup()
+```
+
 Creating the genre dummy for analysis, it will take the value one if the movie is a certain genre.
 
 ```{r}
-# Ensure Genre_imdb is a factor
+# Ensure Genre is a factor
 data_final <- data_final %>%
   mutate(Genre_imdb = factor(Genre_imdb))
 
@@ -145,24 +164,10 @@ data_final <- data_final %>%
 ### Original Language
 
 ```{r}
-unique_Lang <- data_final %>%
-  select(original_language) %>%
-  distinct()
-unique_Lang
-```
-
-```{r}
-data_final <- data_final %>%
-  mutate(original_language= factor(original_language))
-
-dummy_lang <- dummyVars(" ~ original_language", data = data_final)
-data_final_encoded_lang <- as.data.frame(predict(dummy_lang, newdata = data_final))
-
-data_final <- bind_cols(data_final, data_final_encoded_lang)
-
 data_final <- data_final %>%
   select(-original_language)
 ```
+There are to little observations for each language some even have none observations.
 
 ### Duration of the movie
 
@@ -204,7 +209,6 @@ data_final <- data_final %>%
 Season
 
 ```{r}
-# Create a feature for the season 
 data_final <- data_final %>%
   mutate(season = case_when(
     month(release_date) %in% c(12, 1, 2) ~ "Winter",
@@ -250,16 +254,6 @@ data_final <- data_final %>%
 ### World Wide Gross (Dependent Variables)
 
 ```{r}
-# Visualize the distribution with a histogram
-ggplot(data_final, aes(x = world_wide_gross)) +
-  geom_histogram(binwidth = 5000000000, fill = "blue", color = "black", alpha = 0.7) +
-  labs(title = "Distribution of World Wide Gross", x = "World Wide Gross", y = "Frequency")
-
-# Visualize the distribution with a density plot
-ggplot(data_final, aes(x = world_wide_gross)) +
-  geom_density(fill = "blue", alpha = 0.7) +
-  labs(title = "Density Plot of World Wide Gross", x = "World Wide Gross", y = "Density")
-
 # Visualize the distribution with a boxplot
 ggplot(data_final, aes(y = world_wide_gross)) +
   geom_boxplot(fill = "blue", alpha = 0.7) +
@@ -498,7 +492,7 @@ director_metrics <- director_movie_count %>%
   left_join(director_award_score, by = "Director_imdb") %>%
   left_join(director_awards_nominations, by = "Director_imdb")
 
-# Normalize wins and nominations to ensure that many small awards don't overshadow big ones. I want the importan awards to still have weight.
+# Normalize wins and nominations to ensure that many small awards don't overshadow big ones. I want the important awards to still have weight.
 director_metrics <- director_metrics %>%
   mutate(
     normalized_wins = total_wins / max(total_wins, na.rm = TRUE),
@@ -520,7 +514,7 @@ director_metrics <- director_metrics %>%
   ) %>%
   select(-min_score, -max_score)
 
-# Merge the normalized director score back into the original data_final
+
 data_final <- data_final %>%
   left_join(director_metrics, by = "Director_imdb")
 
@@ -541,7 +535,6 @@ data_final <- data_final %>%
 Let's fix the gender variable and complete the Na's.
 
 ```{r}
-# Filter rows where director_is_a_woman is NA
 directors_with_missing_gender <- data_final %>%
   filter(is.na(director_is_woman)) %>%
   select(Director_imdb) %>%
@@ -551,7 +544,7 @@ print(directors_with_missing_gender)
 ```
 
 ```{r}
-# List of women directors based on the provided by the chat that looked into 600 names
+# List of women directors 
 women_directors <- c(
   "Gaysorn Thavat", "Anca Miruna Lazarescu", "Armagan Ballantyne", "Soudade Kaadan",
   "Vesela Kazakova", "Luàna Bajrami", "Neus Ballús", "Erige Sehiri", "Amélie van Elmbt",
@@ -571,7 +564,6 @@ data_final$director_is_woman[is.na(data_final$Director_imdb)] <- NA
 Now for the Lead is a Woman
 
 ```{r}
-# Filter rows where director_is_a_woman is NA
 actor_with_missing_gender <- data_final %>%
   filter(is.na(lead_is_woman)) %>%
   select(FirstActor_imdb) %>%
@@ -581,7 +573,6 @@ print(actor_with_missing_gender)
 ```
 
 ```{r}
-# List of women actors based on the provided names
 women_actors <- c(
   "Chia-Yen Ko", "Elín Hall", "LisaGay Hamilton", "Gwei Lun-Mei", "Karelle Tremblay",
   "Thitiya Jirapornsilp", "Nuria Giménez", "Algi Eke", "Huifang Duan", "Jyotika",
@@ -605,26 +596,12 @@ data_final$lead_is_woman <- ifelse(data_final$FirstActor_imdb %in% women_actors,
 
 data_final$lead_is_woman[is.na(data_final$FirstActor_imdb)] <- NA
 ```
-### Budget
 
-There are a lot of NA's in budget and I believe that imputing will affect the final results, so I have decided to eliminate this variable.
 
 ```{r}
-na_count <- sum(is.na(data_final$Budget))
-na_count
-```
-
-We have decided that the best course of action is to eliminate the rows with NA values in the Budget column. Due to establishing that the dependent variable will be based on the literature reviews and how the majority of the papers treat the dependent variable, we have made the decision that all the movies without a budget will not be considered. Considering our previous work on the success variable, which was created to have a sense of what could be considered a successful movie, it is essential to ensure the accuracy of our data. Ignoring the budget in our metric for the dependent variable could result in movies with negative profits being incorrectly classified as successes with what we could observed happen with that variable. 
-
-```{r}
-data_final2<- data_final %>%
-  filter(!is.na(Budget))
-```
-
-```{r}
-write.csv(data_final2, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_6.csv")
+write.csv(data_final, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_6.csv")
 
 ```
+
 
 We will continue now with the variables for the actors in the next script called "Creating the variables_Part_2"
-
