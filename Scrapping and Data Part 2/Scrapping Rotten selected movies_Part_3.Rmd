@@ -275,7 +275,7 @@ merged_data <- merged_data %>%
 ```
 
 ```{r}
-write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_3.csv",row.names = FALSE)
+#write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_3.csv",row.names = FALSE)
 
 ```
 

@@ -52,7 +52,7 @@ na_titles <- data %>%
 ```
 
 ```{r}
-na_titles <- na_titles[1:14808,]
+na_titles <- na_titles[1:10,]
 ```
 
 #### Scrapping Functions
@@ -187,7 +187,7 @@ stopCluster(cl)
 ```
 
 ```{r}
-write.csv(final_results, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/scrapping_url_1.csv",row.names = FALSE)
+#write.csv(final_results, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/scrapping_url_1.csv",row.names = FALSE)
 
 ```
 
@@ -201,7 +201,7 @@ merged_data <- data %>%
 ```
 
 ```{r}
-write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_3.csv",row.names = FALSE)
+#write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_3.csv",row.names = FALSE)
 
 ```
 

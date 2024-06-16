@@ -28,7 +28,7 @@ library(e1071)
 ### Creating the variables for this small data set
 
 ```{r}
-data_final <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv", show_col_types = FALSE)
+data_final_5 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv", show_col_types = FALSE)
 ```
 
 ### Youtube Variable
@@ -76,7 +76,7 @@ results_youtube_1$view_count_normalized_fixed <- sapply(results_youtube_1$view_c
 ```
 
 ```{r}
-data_final_6 <- merge(data_final_6, results_youtube_1, by = "title", all.x = TRUE)
+data_final_5 <- merge(data_final_5, results_youtube_1, by = "title", all.x = TRUE)
 ```
 
 ### Instagram Variable
@@ -108,32 +108,861 @@ results_instagram_1$Instagram_followers[is.na(results_instagram_1$Instagram_foll
 ```
 
 ```{r}
-# Function to normalize data using Min-Max Scaling
-normalize_min_max <- function(x) {
-  (x - min(x)) / (max(x) - min(x))
-}
-
-# Apply the normalization function to the Instagram_followers column
-results_instagram_1$Instagram_followers_normalized <- normalize_min_max(results_instagram_1$Instagram_followers)
-
 results_instagram_1 <- results_instagram_1 %>% 
-  select(name, Instagram_followers_normalized)
+  select(name, Instagram_followers)
 ```
 
 
 ```{r}
 # Merge normalized_actor_score for First Actor
-data_final_6 <- data_final_6 %>%
+data_final_5 <- data_final_5 %>%
   left_join(results_instagram_1, by = c("FirstActor_imdb" = "name")) %>%
-  rename(FirstActor_followers = Instagram_followers_normalized)
+  rename(FirstActor_followers = Instagram_followers)
 
 # Merge normalized_actor_score for Second Actor
-data_final_6 <- data_final_6 %>%
+data_final_5 <- data_final_5 %>%
   left_join(results_instagram_1, by = c("SecondActor_imdb" = "name")) %>%
-  rename(SecondActor_followers = Instagram_followers_normalized)
+  rename(SecondActor_followers = Instagram_followers)
+```
+
+
+```{r}
+data_final_5
+```
+
+## Other variables
+```{r}
+na_count <- sum(is.na(data_final_5$FirstActor_followers))
+na_count
 ```
 
 ```{r}
-write.csv(data_final_6, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Final Part 4/data_final_8.csv", row.names = FALSE)
+na_count <- sum(is.na(data_final_5$SecondActor_followers))
+na_count
+```
+
+
+```{r}
+data_final_5 <- data_final_5 %>%
+  filter(!is.na(SecondActor_followers))
+```
+
+### Genre
+
+```{r}
+unique_genres <- data_final %>%
+  group_by(Genre_imdb) %>%
+  summarise(count = n()) %>%
+  ungroup()
+```
+
+Checked individually the most unique genres and look into the titles
+
+```{r}
+unique_genres2 <- data_final %>%
+  select(title, Genre_imdb) %>%
+  filter(Genre_imdb == "Sci-Fi")
+```
+
+We are going to reduce the types of genre to the main one by using Rotten Tomatoes genres also
+
+```{r}
+# Update the genre for the movie
+data_final <- data_final %>%
+  mutate(Genre_imdb = case_when(
+    title == "The Boy Next Door" ~ "Mystery",
+    title == "The Bar" ~ "Mystery",
+    title == "97 Minutes" ~ "Mystery",
+    title == "A Christmas Star" ~ "Adventure",
+    title == "App" ~ "Mystery",
+    TRUE ~ Genre_imdb
+  ))
+
+```
+
+The rest we eliminate.
+```{r}
+data_final <- data_final %>%
+  group_by(Genre_imdb) %>%
+  filter(n() > 1) %>%
+  ungroup()
+```
+
+Creating the genre dummy for analysis, it will take the value one if the movie is a certain genre.
+
+```{r}
+# Ensure Genre is a factor
+data_final <- data_final %>%
+  mutate(Genre_imdb = factor(Genre_imdb))
+
+# crating the dummy variables
+dummy <- dummyVars(" ~ Genre_imdb", data = data_final)
+data_final_encoded <- as.data.frame(predict(dummy, newdata = data_final))
+
+```
+
+```{r}
+# combining the columns
+data_final <- bind_cols(data_final, data_final_encoded)
+
+data_final <- data_final %>%
+  select(-Genre_imdb)
+```
+
+### MPAA
+
+```{r}
+unique_MPAA <- data_final %>%
+  group_by(MPAA_imdb) %>%
+  summarise(count = n()) %>%
+  ungroup()
+unique_MPAA
+```
+
+There are 36 distinct ratings, we will standardize it for the analysis using the Motion Pictures Association Rating Guide (Click here for the interactive guide: <https://www.motionpictures.org/film-ratings/>).
+
+```{r}
+# Function to standardize ratings
+standardize_rating <- function(rating) {
+  case_when(
+    rating %in% c("G", "TV-Y", "TV-G", "A", "AL", "TP", "A/fig", "A/i", "A/i/fig", "0+", "3", "4", "6+", "TV-Y7") ~ "General Audiences",
+    rating %in% c("PG", "TV-PG", "2", "5", "7","7/i","7/fig","10", "12", "12/fig", "13", "13+") ~ "Parental Guidance Suggested",
+    rating %in% c("PG-13", "TV-14", "14", "16", "16+", "16/fig", "9+", "M") ~ "Parents Strongly Cautioned",
+    rating %in% c("R", "TV-MA", "18", "18+", "18/fig", "NC-17", "X") ~ "Restricted",
+    rating %in% c("NC-17") ~ "No One 17 and Under Admitted",
+    rating %in% c("Not Rated") ~ "Not Rated",
+    TRUE ~ "Unknown"
+  )
+}
+
+# Apply the function to standardize ratings
+data_final <- data_final %>%
+  mutate(MPAA = standardize_rating(MPAA_imdb))
+
+# transforming it as a factor
+data_final <- data_final %>%
+  mutate(MPAA = factor(MPAA))
+
+# Check if there are categories that are "Unknown"
+unknown_values <- data_final %>%
+  filter(MPAA == "Unknown") %>%
+  select(MPAA_imdb) %>%
+  distinct() 
+# there are no unknown values!
+```
+
+```{r}
+# Creating the dummy variable
+dummy_mpaa <- dummyVars(" ~ MPAA", data = data_final)
+data_final_encoded_mpaa <- as.data.frame(predict(dummy_mpaa, newdata = data_final))
+
+data_final <- bind_cols(data_final, data_final_encoded_mpaa)
+
+data_final <- data_final %>%
+  select(-MPAA_imdb, -MPAA)
+```
+
+### Original Language
+
+```{r}
+data_final <- data_final %>%
+  select(-original_language)
+```
+There are to little observations for each language some even have none observations.
+
+### Duration of the movie
+
+```{r}
+# Normalize the duration variable between 0 and 1
+data_final <- data_final %>%
+  mutate(duration_normalized = (Duration_mov_imdb- min(Duration_mov_imdb)) / (max(Duration_mov_imdb) - min(Duration_mov_imdb)))
+
+summary(data_final$duration_normalized)
+data_final <- data_final %>%
+  select(-Duration_mov_imdb)
+```
+
+### Release Date
+
+```{r}
+data_final <- data_final %>%
+  mutate(release_date = dmy(release_date))
+```
+
+```{r}
+# Extract year, month, and day
+data_final <- data_final %>%
+  mutate(release_year = year(release_date),
+         release_month = month(release_date),
+         release_day = day(release_date))
+
+# Calculate the age of the movie
+current_year <- year(Sys.Date())
+data_final <- data_final %>%
+  mutate(movie_age = current_year - release_year)
+
+# Create a feature to determine if the release date is a weekend
+data_final <- data_final %>%
+  mutate(is_weekend = if_else(wday(release_date) %in% c(1, 7), 1, 0))
+
+```
+
+Season
+
+```{r}
+data_final <- data_final %>%
+  mutate(season = case_when(
+    month(release_date) %in% c(12, 1, 2) ~ "Winter",
+    month(release_date) %in% c(3, 4, 5) ~ "Spring",
+    month(release_date) %in% c(6, 7, 8) ~ "Summer",
+    month(release_date) %in% c(9, 10, 11) ~ "Fall"
+  ))
+
+```
+
+```{r}
+# Creating a dummy variable
+data_final <- data_final %>%
+  mutate(season_ = factor(season))
+
+dummy_season <- dummyVars(" ~ season", data = data_final)
+data_final_encoded_season <- as.data.frame(predict(dummy_season, newdata = data_final))
+
+data_final <- bind_cols(data_final, data_final_encoded_season)
+
+data_final <- data_final %>%
+  select(-release_date, -season_)
+```
+
+### Production Companies
+
+There are a lot of production companies that appear 1 time in the data set. This is not going to bring little to no insight into the analysis as we do not have enough observations for each so I have decided to eliminate it.
+
+```{r}
+unique_prod <- data_final %>%
+  group_by(production_companies) %>%
+  summarise(count = n()) %>%
+  ungroup()
+unique_prod
+
+data_final <- data_final %>%
+  select(-production_companies)
+```
+
+### Score
+
+We are going to create a combined score, using the three scores attained and the total voting for those score.
+
+```{r}
+# First we normalize IMDb scores to a 0-100 scale equal to the rt one.
+data_final <- data_final %>%
+  mutate(imdb_score_normalized = IMDbscore_imdb * 10)
+```
+
+I decided to do this instead of differentiating between the three because I want to concentrate the impact of this score in the revenue, not the impact that each has on the revenue of a movie.
+
+Now, I have some missing values but I dont want to loose information that the movies with this missing values is going to give me so we are going to create a mix approach to calculate the score.
+
+```{r}
+data_final <- data_final %>%
+  rowwise() %>%
+  mutate(
+    # cases with all scores
+    weighted_sum_all = sum(
+      na.omit(c(imdb_score_normalized,
+                critics_score_rt * total_critics_reviews_rt,
+                audience_score_rt * total_audience_reviews_rt))),
+    total_reviews_all = sum(
+      na.omit(c(1, total_critics_reviews_rt, total_audience_reviews_rt))),
+    combined_score_all = ifelse(total_reviews_all > 0, weighted_sum_all / total_reviews_all, NA),
+    
+    # cases missing audience scores
+    weighted_sum_no_audience = sum(
+      na.omit(c(imdb_score_normalized,
+                critics_score_rt * total_critics_reviews_rt))),
+    total_reviews_no_audience = sum(
+      na.omit(c(1, total_critics_reviews_rt))),
+    combined_score_no_audience = ifelse(total_reviews_no_audience > 0, weighted_sum_no_audience / total_reviews_no_audience, NA),
+    
+    # cases missing critics' scores
+    weighted_sum_no_critics = sum(
+      na.omit(c(imdb_score_normalized,
+                audience_score_rt * total_audience_reviews_rt))),
+    total_reviews_no_critics = sum(
+      na.omit(c(1, total_audience_reviews_rt))),
+    combined_score_no_critics = ifelse(total_reviews_no_critics > 0, weighted_sum_no_critics / total_reviews_no_critics, NA),
+    
+    # cases with only IMDb scores
+    combined_score_imdb_only = imdb_score_normalized,
+    
+    # combined score creation
+    combined_score = case_when(
+      !is.na(combined_score_all) ~ combined_score_all,
+      !is.na(combined_score_no_audience) ~ combined_score_no_audience,
+      !is.na(combined_score_no_critics) ~ combined_score_no_critics,
+      TRUE ~ combined_score_imdb_only
+    )
+  ) %>%
+  ungroup()
+```
+
+```{r}
+data_final <- data_final %>%
+  mutate(
+    min_combined_score = min(combined_score, na.rm = TRUE),
+    max_combined_score = max(combined_score, na.rm = TRUE),
+    movie_score = (combined_score - min_combined_score) / (max_combined_score - min_combined_score)
+  )
+```
+
+```{r}
+data_final <- data_final %>%
+  select(-min_combined_score, -max_combined_score, -IMDbscore_imdb, -imdb_score_normalized,
+         -weighted_sum_all, -total_reviews_all, -combined_score_all,
+         -weighted_sum_no_audience, -total_reviews_no_audience, -combined_score_no_audience,
+         -weighted_sum_no_critics, -total_reviews_no_critics, -combined_score_no_critics,
+         -combined_score_imdb_only, -combined_score)
+
+```
+
+### Director
+
+Let's start with cleaning the variable for the Oscars.
+
+```{r}
+oscar_summary <- data_final %>%
+  filter(Oscar_Information_imdb != 'Awards') %>%
+  group_by(Oscar_Information_imdb) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+```
+
+The top awards will be given waits based on this list (Link:<https://www.therichest.com/luxury/top-10-most-prestigious-movie-awards-in-the-world/>)
+
+```{r}
+award_weights <- c(
+  'Won 1 Oscar' = 50,
+  'Won 2 Oscars' = 100,
+  'Won 3 Oscars' = 150,
+  'Won 4 Oscars' = 200,
+  'Won 5 Oscars' = 250,
+  'Won 6 Oscars' = 300,
+  'Won 7 Oscars' = 350,
+  'Won 1 BAFTA Award' = 30,
+  'Won 2 BAFTA Awards' = 60,
+  'Won 1 Primetime Emmy' = 20,
+  'Won 2 Primetime Emmys' = 40,
+  'Nominated for 1 Oscar' = 15,
+  'Nominated for 2 Oscars' = 30,
+  'Nominated for 3 Oscars' = 45,
+  'Nominated for 4 Oscars' = 60,
+  'Nominated for 5 Oscars' = 75,
+  'Nominated for 1 BAFTA Award' = 10,
+  'Nominated for 2 BAFTA Awards' = 20,
+  'Nominated for 3 BAFTA Awards' = 30,
+  'Nominated for 1 Primetime Emmy' = 5,
+  'Nominated for 2 Primetime Emmys' = 10,
+  'Nominated for 3 Primetime Emmys' = 15
+)
+
+```
+
+```{r}
+data_final <- data_final %>%
+  mutate(Oscar_Information_imdb = ifelse(Oscar_Information_imdb == "Awards", "No Major Awards", Oscar_Information_imdb))
+
+```
+
+Taking into account that I will also get the number of awards and nominations.
+
+Now we will clean the Awards and nomination variables
+
+```{r}
+unique_awards_nominations <- data_final %>%
+  select(AwardsAndNominations_imdb) %>%
+  distinct() %>%
+  arrange(AwardsAndNominations_imdb)
+```
+
+Cleaning the column as the movies with no awards need to be cleaned to represent that.
+
+```{r}
+data_final <- data_final %>%
+  mutate(
+    AwardsAndNominations_imdb = ifelse(str_detect(AwardsAndNominations_imdb, "win|wins|nomination|nominations"), 
+                                       AwardsAndNominations_imdb, 
+                                       "No Awards")
+  )
+
+```
+
+```{r}
+# Extract wins and nominations
+data_final <- data_final %>%
+  mutate(
+    wins = ifelse(AwardsAndNominations_imdb != "No Awards", 
+                  as.numeric(str_extract(AwardsAndNominations_imdb, "\\d+(?=\\s+win|\\s+wins)")), 0),
+    nominations = ifelse(AwardsAndNominations_imdb != "No Awards", 
+                         as.numeric(str_extract(AwardsAndNominations_imdb, "\\d+(?=\\s+nomination|\\s+nominations)")), 0)
+  ) %>% 
+  replace_na(list(wins = 0, nominations = 0))
+
+```
+
+```{r}
+# Calculate the award score for each director based on their awards and nominations history in my data set
+data_final <- data_final %>%
+  rowwise() %>%
+  mutate(award_score = ifelse(Oscar_Information_imdb %in% names(award_weights), award_weights[Oscar_Information_imdb], 0)) %>%
+  ungroup()
+
+# Calculate the number of movies each director has directed in the data set
+director_movie_count <- data_final %>%
+  group_by(Director_imdb) %>%
+  summarise(movie_count = n())
+
+# Calculate the total award score for each director in the data set
+director_award_score <- data_final %>%
+  group_by(Director_imdb) %>%
+  summarise(total_award_score = sum(award_score))
+
+# Aggregate wins and nominations for each director for movies in the data set
+director_awards_nominations <- data_final %>%
+  group_by(Director_imdb) %>%
+  summarise(
+    total_wins = sum(wins, na.rm = TRUE),
+    total_nominations = sum(nominations, na.rm = TRUE)
+  )
+
+director_metrics <- director_movie_count %>%
+  left_join(director_award_score, by = "Director_imdb") %>%
+  left_join(director_awards_nominations, by = "Director_imdb")
+
+# Normalize wins and nominations to ensure that many small awards don't overshadow big ones. I want the important awards to still have weight.
+director_metrics <- director_metrics %>%
+  mutate(
+    normalized_wins = total_wins / max(total_wins, na.rm = TRUE),
+    normalized_nominations = total_nominations / max(total_nominations, na.rm = TRUE)
+  )
+
+# combined director score
+director_metrics <- director_metrics %>%
+  mutate(
+    combined_director_score = movie_count + total_award_score + normalized_wins * 10 + normalized_nominations * 5
+  )
+
+# Normalize the combined director score 
+director_metrics <- director_metrics %>%
+  mutate(
+    min_score = min(combined_director_score, na.rm = TRUE),
+    max_score = max(combined_director_score, na.rm = TRUE),
+    normalized_director_score = (combined_director_score - min_score) / (max_score - min_score)
+  ) %>%
+  select(-min_score, -max_score)
+
+
+data_final <- data_final %>%
+  left_join(director_metrics, by = "Director_imdb")
+
+
+```
+
+```{r}
+columns_to_remove <- c("wins", "nominations", "award_score", "movie_count", "total_award_score", 
+                       "total_wins", "total_nominations", "normalized_wins", "normalized_nominations", 
+                       "combined_director_score", "Oscar_Information_imdb", "AwardsAndNominations_imdb")
+
+data_final <- data_final %>%
+  select(-all_of(columns_to_remove))
+```
+
+### Gender
+
+Let's fix the gender variable and complete the Na's.
+
+```{r}
+directors_with_missing_gender <- data_final %>%
+  filter(is.na(director_is_woman)) %>%
+  select(Director_imdb) %>%
+  distinct()
+
+print(directors_with_missing_gender)
+```
+
+```{r}
+# List of women directors 
+women_directors <- c(
+  "Gaysorn Thavat", "Anca Miruna Lazarescu", "Armagan Ballantyne", "Soudade Kaadan",
+  "Vesela Kazakova", "Luàna Bajrami", "Neus Ballús", "Erige Sehiri", "Amélie van Elmbt",
+  "Kiruthiga Udhayanidhi", "Gunhild Magnor", "Kurdwin Ayub", "Manane Rodríguez",
+  "Senem Tüzen", "Coky Giedroyc", "Kestrin Pantera", "Cláudia Varejão", "Heiward Mak",
+  "Oeke Hoogendijk", "Valérie Massadian", "Feihong Chen", "Lucía Garibaldi", 
+  "Anne-Lise Koehler", "Hnin Ei Hlaing", "Ramata-Toulaye Sy", "Ángeles Cruz",
+  "Tizza Covi", "Becs Arahanga", "Aitch Alberto", "Naziha Arebi", "Eun-Jeong Yu",
+  "Tanwarin Sukkhapisit"
+)
+
+data_final$director_is_woman <- ifelse(data_final$Director_imdb %in% women_directors, 1, 0)
+
+data_final$director_is_woman[is.na(data_final$Director_imdb)] <- NA
+```
+
+Now for the Lead is a Woman
+
+```{r}
+actor_with_missing_gender <- data_final %>%
+  filter(is.na(lead_is_woman)) %>%
+  select(FirstActor_imdb) %>%
+  distinct()
+
+print(actor_with_missing_gender)
+```
+
+```{r}
+women_actors <- c(
+  "Chia-Yen Ko", "Elín Hall", "LisaGay Hamilton", "Gwei Lun-Mei", "Karelle Tremblay",
+  "Thitiya Jirapornsilp", "Nuria Giménez", "Algi Eke", "Huifang Duan", "Jyotika",
+  "Fala Chen", "Ladya Cheryl", "Gong Linna", "Kinuko Tanida", "Luàna Bajrami",
+  "Bipasha Basu", "Yile Yara Vianello", "Jowita Budnik", "Moa Stefansdotter",
+  "Ameni Fdhili", "Iride Mockert", "Dextina Booker", "Mbong Amata", "Suhaee Abro",
+  "Amber Fares", "Delfine Bafort", "Chuan-Ying Chuang", "Youssra", "Mbissine Thérèse Diop",
+  "María Fux", "Kristii Schneider", "Gerlinde Kaltenbrunner", "Lola Arias",
+  "Hong-Anh", "Awatea Mita", "Jill Li", "Thishiwe Ziqubu", "Musetta Vander",
+  "Preity G Zinta", "Hennika Huuse", "Freny Bhagat", "Yunjin Cao", "Shehr Ali",
+  "Angdu Padma", "Woseser Tsering", "Tanaquil Le Clerq", "Fine Sendel", "Mãlina Manovici",
+  "Parineeti Chopra", "Ha Le Diem", "Hnin Ei Hlaing", "Anaita Wali Zada",
+  "Trien de Haan-Zwagerman", "Paca Molera Pereira", "Dada Chan", "Ro Mereani Adi Tuimatanisiga",
+  "Whirimako Black", "Mía Maestro", "Shamira Raphaela", "Inês Sá Frias",
+  "Gcina Mhlophe", "Crystal-Donna Roberts", "Meezaan Jafri", "Anzhelika Hakobyan",
+  "Basê Dogan", "Hyomin", "Cindy Jansen", "Nisrine Amine", "Kovai Sarala",
+  "Rhae-Kye Waites", "Magdaléna Borová"
+)
+
+data_final$lead_is_woman <- ifelse(data_final$FirstActor_imdb %in% women_actors, 1, 0)
+
+data_final$lead_is_woman[is.na(data_final$FirstActor_imdb)] <- NA
+```
+
+
+Libraries
+
+```{r message=FALSE}
+library(sentimentr) # for the sentiment analysis
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(stringr)
+library(parallel)
+library(future.apply)
+library(scales)
+library(readxl)
+
+```
+
+```{r message=FALSE}
+data_final_6 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_6.csv",show_col_types = FALSE)
+data_final_6 <- data_final_6[, -1]
+```
+
+### Actor
+
+```{r message=FALSE}
+actors_info <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/actors_with_imdb.csv", 
+    delim = ",", escape_double = FALSE, trim_ws = TRUE)
+```
+
+Let's start with cleaning the variable for the Oscars.
+
+```{r}
+oscar_summary <- actors_info %>%
+  filter(oscars_nominations != 'Awards') %>%
+  group_by(oscars_nominations) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+```
+
+The top awards will be given waits based on this list (Link:<https://www.therichest.com/luxury/top-10-most-prestigious-movie-awards-in-the-world/>)
+
+```{r}
+award_weights <- c(
+  'Won 1 Oscar' = 50,
+  'Won 2 Oscars' = 100,
+  'Won 3 Oscars' = 150,
+  'Won 4 Oscars' = 200,
+  'Won 5 Oscars' = 250,
+  'Won 6 Oscars' = 300,
+  'Won 1 BAFTA Award' = 30,
+  'Won 2 BAFTA Awards' = 60,
+  'Won 3 BAFTA Awards' = 90,  # New
+  'Won 1 Primetime Emmy' = 20,
+  'Won 2 Primetime Emmys' = 40,
+  'Won 3 Primetime Emmys' = 60,  # New
+  'Won 4 Primetime Emmys' = 80,  # New
+  'Won 5 Primetime Emmys' = 100,  # New
+  'Won 6 Primetime Emmys' = 120,  # New
+  'Won 7 Primetime Emmys' = 140,  # New
+  'Won 9 Primetime Emmys' = 180,  # New
+  'Won 11 Primetime Emmys' = 220,  # New
+  'Won 12 Primetime Emmys' = 240,  # New
+  'Nominated for 1 Oscar' = 15,
+  'Nominated for 2 Oscars' = 30,
+  'Nominated for 3 Oscars' = 45,
+  'Nominated for 4 Oscars' = 60,
+  'Nominated for 5 Oscars' = 75,
+  'Nominated for 6 Oscars' = 90,  # New
+  'Nominated for 8 Oscars' = 120,  # New
+  'Nominated for 12 Oscars' = 180,  # New
+  'Nominated for 1 BAFTA Award' = 10,
+  'Nominated for 2 BAFTA Awards' = 20,
+  'Nominated for 3 BAFTA Awards' = 30,
+  'Nominated for 4 BAFTA Awards' = 40,  # New
+  'Nominated for 8 BAFTA Awards' = 80,  # New
+  'Nominated for 1 Primetime Emmy' = 5,
+  'Nominated for 2 Primetime Emmys' = 10,
+  'Nominated for 3 Primetime Emmys' = 15,
+  'Nominated for 4 Primetime Emmys' = 20,  # New
+  'Nominated for 5 Primetime Emmys' = 25,  # New
+  'Nominated for 6 Primetime Emmys' = 30,  # New
+  'Nominated for 7 Primetime Emmys' = 35,  # New
+  'Nominated for 8 Primetime Emmys' = 40,  # New
+  'Nominated for 9 Primetime Emmys' = 45,  # New
+  'Nominated for 10 Primetime Emmys' = 50,  # New
+  'Nominated for 13 Primetime Emmys' = 65  # New
+)
+
+```
+
+```{r}
+actors_info <- actors_info %>%
+  mutate(oscars_nominations = ifelse(oscars_nominations == "Awards", "No Major Awards", oscars_nominations))
+
+```
+
+Now we will clean the Awards and nomination variables
+
+```{r}
+unique_awards_nominations2 <- actors_info %>%
+  select(awards_and_nominations) %>%
+  distinct() %>%
+  arrange(awards_and_nominations)
+```
+
+Cleaning the column as the movies with no awards need to be cleaned to represent that.
+
+```{r}
+actors_info <- actors_info %>%
+  mutate(
+    awards_and_nominations = ifelse(str_detect(awards_and_nominations, "win|wins|nomination|nominations"), 
+                                       awards_and_nominations, 
+                                       "No Awards")
+  )
+
+```
+
+```{r}
+actors_info <- actors_info %>%
+  mutate(
+    wins = ifelse(awards_and_nominations != "No Awards", 
+                  as.numeric(str_extract(awards_and_nominations, "\\d+(?=\\s+win|\\s+wins)")), 0),
+    nominations = ifelse(awards_and_nominations != "No Awards", 
+                         as.numeric(str_extract(awards_and_nominations, "\\d+(?=\\s+nomination|\\s+nominations)")), 0)
+  ) %>% 
+  replace_na(list(wins = 0, nominations = 0))
+
+```
+
+For the number of movies, we need to deal first with any Na's found in that variable
+
+```{r}
+# Identify actors with NA in number_of_movies
+na_actors <- actors_info %>%
+  filter(is.na(number_of_movies)) %>%
+  pull(name)
+
+# Count their appearances in data_final to fill this Na's with that
+actor_appearances <- data_final_6 %>%
+  mutate(
+    FirstActor_imdb = ifelse(FirstActor_imdb %in% na_actors, FirstActor_imdb, NA),
+    SecondActor_imdb = ifelse(SecondActor_imdb %in% na_actors, SecondActor_imdb, NA)
+  ) %>%
+  pivot_longer(cols = c(FirstActor_imdb, SecondActor_imdb), values_drop_na = TRUE) %>%
+  group_by(value) %>%
+  summarize(appearances = n())
+
+print(actor_appearances) # lets see the number of movies they appear in
+```
+
+So they each appear 1 time in our data set and in IMDb they also have only 1 previous movie so we are going to set the Na's to 1.
+
+```{r}
+actors_info <- actors_info %>%
+  mutate(number_of_movies = replace_na(number_of_movies, 1))
+```
+
+Following the same calculations we did with director
+
+```{r}
+# Calculate the award score for each actor based on their awards and nominations history
+actors_info <- actors_info %>%
+  rowwise() %>%
+  mutate(award_score = ifelse(awards_and_nominations %in% names(award_weights), award_weights[awards_and_nominations], 0)) %>%
+  ungroup()
+
+# Calculate the total award score for each actor in the data set
+actor_award_score <- actors_info %>%
+  group_by(actor_id_imdb) %>%
+  summarise(total_award_score = sum(award_score))
+
+# Aggregate wins and nominations for each actor for movies in the data set
+actor_awards_nominations <- actors_info %>%
+  group_by(actor_id_imdb) %>%
+  summarise(
+    total_wins = sum(wins, na.rm = TRUE),
+    total_nominations = sum(nominations, na.rm = TRUE)
+  )
+
+# Combine the metrics
+actor_metrics <- actors_info %>%
+  select(actor_id_imdb, number_of_movies) %>% #we add the number of movies the actor has being in
+  distinct() %>%
+  left_join(actor_award_score, by = "actor_id_imdb") %>%
+  left_join(actor_awards_nominations, by = "actor_id_imdb")
+
+# Normalize wins and nominations
+actor_metrics <- actor_metrics %>%
+  mutate(
+    normalized_wins = total_wins / max(total_wins, na.rm = TRUE),
+    normalized_nominations = total_nominations / max(total_nominations, na.rm = TRUE)
+  )
+
+# Calculate combined actor score
+actor_metrics <- actor_metrics %>%
+  mutate(
+    combined_actor_score = number_of_movies + total_award_score + normalized_wins * 10 + normalized_nominations * 5
+  )
+
+# Normalize the combined actor score
+actor_metrics <- actor_metrics %>%
+  mutate(
+    min_score = min(combined_actor_score, na.rm = TRUE),
+    max_score = max(combined_actor_score, na.rm = TRUE),
+    normalized_actor_score = (combined_actor_score - min_score) / (max_score - min_score)
+  ) %>%
+  select(-min_score, -max_score)
+
+# Merge the normalized actor score back into the original actors_info
+actors_info <- actors_info %>%
+  left_join(actor_metrics, by = "actor_id_imdb")
+
+```
+
+```{r}
+columns_to_remove <- c("wins", "nominations", "award_score", "number_of_movies.y","number_of_movies.x", "total_award_score", 
+                       "total_wins", "total_nominations", "normalized_wins", "normalized_nominations", 
+                       "combined_actor_score", "awards_and_nominations", "oscars_nominations")
+
+
+actors_info <- actors_info %>%
+  select(-all_of(columns_to_remove))
+```
+
+Let's now add the rating to the final data set
+
+```{r}
+actors <- actors_info %>%
+  select(-c(imdb_id,actor_id_imdb))
+```
+
+```{r}
+# Merge normalized_actor_score for First Actor
+data_final_6 <- data_final_6 %>%
+  left_join(actors, by = c("FirstActor_imdb" = "name")) %>%
+  rename(FirstActor_score = normalized_actor_score)
+
+# Merge normalized_actor_score for Second Actor
+data_final_6 <- data_final_6 %>%
+  left_join(actors, by = c("SecondActor_imdb" = "name")) %>%
+  rename(SecondActor_score = normalized_actor_score)
+```
+
+### Sentiment Analysis of Reviews
+
+Let´s start with the Reviews Variable.
+
+-   TitleReview_imdb
+
+-   FeatureReview_imdb
+
+-   top_critic_review_1_rt
+
+-   top_critic_review_2_rt
+
+-   audience_review_1_rt
+
+-   audience_review_2_rt
+
+```{r}
+data <- data_final_6 %>%
+  select(imdb_id, TitleReview_imdb, FeatureReview_imdb, top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt)
+
+```
+
+```{r}
+# Function to calculate sentiment score using sentimentr
+get_sentiment <- function(text) {
+  if (is.na(text) || length(text) == 0 || text == "") {
+    return(NA)
+  } else {
+    sentiment <- sentiment(text)
+    return(mean(sentiment$sentiment))
+  }
+}
+
+# parallel processing
+num_cores <- detectCores() - 1 
+plan(multisession, workers = num_cores)
+
+# Apply the function to each review column
+columns_to_analyze <- c("TitleReview_imdb", "FeatureReview_imdb", "top_critic_review_1_rt", "top_critic_review_2_rt", "audience_review_1_rt", "audience_review_2_rt")
+
+# Apply sentiment analysis
+for (col in columns_to_analyze) {
+  sentiment_col_name <- paste0(col, "_sentiment")
+  data[[sentiment_col_name]] <- future_sapply(data[[col]], get_sentiment)
+}
+
+# Shut down the parallel backend
+plan(sequential)
+
+```
+
+Now we are going to use the average to create the overall sentiment score for the reviews of the each movie.
+
+```{r}
+# Calculate the overall sentiment score as the mean of all sentiment scores
+data <- data %>%
+  rowwise() %>%
+  mutate(overall_sentiment_score = mean(c_across(ends_with("_sentiment")), na.rm = TRUE)) %>%
+  ungroup()
+
+# Classify the overall sentiment score to observe better the results
+data <- data %>%
+  mutate(overall_sentiment_class = map_chr(overall_sentiment_score, classify_sentiment))
+
+remove <- c("TitleReview_imdb", "FeatureReview_imdb", "top_critic_review_1_rt", "top_critic_review_2_rt", "audience_review_1_rt", "audience_review_2_rt")
+
+
+data <- data %>%
+  select(-all_of(remove))
+```
+
+Merge everything and check
+
+```{r}
+data_final_6 <- merge(data_final_6, data, by = "imdb_id", all.x = TRUE)
+
+data_final_dd <- data_final_6 %>% select(title, overall_sentiment_class, overall_sentiment_score, TitleReview_imdb, FeatureReview_imdb, top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt)
 
 ```

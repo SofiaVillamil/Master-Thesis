@@ -121,7 +121,7 @@ is_na2 <- is_na2 %>% distinct(imdb_id, .keep_all = TRUE) # there are some duplic
 
 ```{r}
 # save to have a back up
-write.csv(is_na2,"C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_ids_1.csv")
+#write.csv(is_na2,"C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_ids_1.csv")
 
 ```
 We have the id and we save it. Now we proceed to the next part.
@@ -207,7 +207,7 @@ for(i in 1:nrow(chunck)) {
 
 ### Saving
 ```{r}
-write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv",row.names = FALSE)
+#write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv",row.names = FALSE)
 
 ```
 

@@ -411,7 +411,7 @@ data$lead_is_woman <- sapply(data$FirstActor_imdb, map_gender, gender_map = gend
 ```
 
 ```{r}
-write.csv(data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_2.csv", row.names = FALSE)
+#write.csv(data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_2.csv", row.names = FALSE)
 ```
 
 Now we continue to the next script called "Data Cleaning_Part_2"

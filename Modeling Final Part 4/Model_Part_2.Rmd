@@ -305,7 +305,7 @@ cl <- makeCluster(detectCores() - 1)
 registerDoParallel(cl)
 
 ctrl <- trainControl(method = "repeatedcv", 
-                     number = 5, repeats = 3,
+                     number = 5, repeats = 2,
                      allowParallel = TRUE,  
                      returnResamp = "all",
                      savePredictions = "all") 
@@ -328,6 +328,12 @@ tune_grid_refined <- expand.grid(
   layer3 = c(1, 2, 3)        # Narrow around 2
 )
 
+
+tune_grid_opt <- expand.grid(
+  layer1 = c(3),
+  layer2 = c(1),  
+  layer3 = c(1))
+
 ```
 
 Training the model
@@ -337,7 +343,7 @@ tuned_model <- train(Profit ~ .,
                      data = train_set, 
                      method = "neuralnet",
                      trControl = ctrl,
-                     tuneGrid = tune_grid_refined)
+                     tuneGrid = tune_grid_opt)
 stopCluster(cl)
 registerDoSEQ()
 print(summary(tuned_model))
@@ -345,7 +351,7 @@ print(summary(tuned_model))
 
 Visualize the model
 ```{r}
-plot(tuned_model)
+#plot(tuned_model)
 ```
 
 
@@ -486,6 +492,12 @@ tune_grid_refined <- expand.grid(
   layer3 = c(0, 1)         # Include a smaller range for layer3 around 0
 )
 
+tune_grid_opt <- expand.grid(
+  layer1 = c(2),
+  layer2 = c(0),  
+  layer3 = c(0))
+
+
 ```
 
 
@@ -496,8 +508,7 @@ tuned_model_with_feature_selection <- train(Profit ~ .,
                                             data = train_set_selected,
                                             method = "neuralnet",
                                             trControl = ctrl_tune,
-                                            tuneGrid = tune_grid,
-                                            metric = "Rsquared")
+                                            tuneGrid = tune_grid)
 stopCluster(cl)
 registerDoSEQ()
 
@@ -575,7 +586,7 @@ cl <- makeCluster(detectCores() - 1)
 registerDoParallel(cl)
 
 ctrl_tune <- trainControl(method = "repeatedcv", 
-                          number = 5, repeats = 3,
+                          number = 5, repeats = 2,
                           allowParallel = TRUE, 
                           returnResamp = "all", 
                           savePredictions = "all")

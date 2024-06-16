@@ -133,9 +133,6 @@ scraped_data <- scraped_data %>%
 ```{r}
 # Merge
 final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
-
-# Saving data set
-write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test_with_bm.csv", row.names = FALSE)
 ```
 
 ```{r}
@@ -151,7 +148,7 @@ df_cleaned <- final_data %>%
 ```
 
 ```{r}
-write.csv(df_cleaned, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test_with_bm_cleaned.csv", row.names = FALSE)
+#write.csv(df_cleaned, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test_with_bm_cleaned.csv", row.names = FALSE)
 ```
 
 We are now going to continue to the next script called "Rotten Tomatoes variables scrapping_Part_4"

@@ -150,7 +150,7 @@ scraped_data <- scraped_data %>%
 final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
 
 # Save the final merged dataset
-write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test.csv", row.names = FALSE)
+#write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test.csv", row.names = FALSE)
 
 ```
 
