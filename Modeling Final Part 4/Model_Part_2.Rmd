@@ -26,11 +26,16 @@ library(pdp) # For partial dependence plots
 library(doParallel)
 library(e1071)
 library(Boruta)
+library(extrafont)
+#font_import()
+#loadfonts(device = "win")
+
 ```
 
 ```{r message=False}
 data_final_8 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Final Part 4/data_final_7.csv")
 ```
+
 
 ### Selecting the variables
 
@@ -237,20 +242,20 @@ There is no high VIF value so we can continue.
 Let's rename the variables for more clarity before starting with the model.
 
 ```{r}
-new_names <- c( "Genre_imdb.Adventure" = "Genre_Adventure",
-               "Genre_imdb.Animation" = "Genre_Animation",
-               "Genre_imdb.Biography" = "Genre_Biography",
-               "Genre_imdb.Comedy" = "Genre_Comedy",
-               "Genre_imdb.Crime" = "Genre_Crime",
-               "Genre_imdb.Documentary" = "Genre_Documentary",
-               "Genre_imdb.Drama" = "Genre_Drama",
-               "Genre_imdb.Fantasy" = "Genre_Fantasy",
-               "Genre_imdb.Horror" = "Genre_imdb_Horror",
-               "Genre_imdb.Mystery" = "Genre_Mystery",
- `MPAA.General Audiences`= "MPAA_General_Audiences",
-               `MPAA.Parents Strongly Cautioned` = "MPAA_Parents_Strongly_Cautioned",
-               `MPAA.Parental Guidance Suggested` = "MPAA_Parental_Guidance_Suggested",
-               "MPAA.Restricted" = "MPAA_Restricted",
+new_names <- c( "Genre_imdb.Adventure" = "genre_adventure",
+               "Genre_imdb.Animation" = "genre_animation",
+               "Genre_imdb.Biography" = "genre_biography",
+               "Genre_imdb.Comedy" = "genre_comedy",
+               "Genre_imdb.Crime" = "genre_crime",
+               "Genre_imdb.Documentary" = "genre_documentary",
+               "Genre_imdb.Drama" = "genre_drama",
+               "Genre_imdb.Fantasy" = "genre_fantasy",
+               "Genre_imdb.Horror" = "genre_horror",
+               "Genre_imdb.Mystery" = "genre_mystery",
+ `MPAA.General Audiences`= "MPAA_general_audiences",
+               `MPAA.Parents Strongly Cautioned` = "MPAA_parents_strongly_cautioned",
+               `MPAA.Parental Guidance Suggested` = "MPAA_parental_guidance_suggested",
+               "MPAA.Restricted" = "MPAA_restricted",
                "duration_normalized" = "duration_movie",
                "is_weekend" = "is_weekend",
                "seasonSpring" = "season_spring",
@@ -288,7 +293,7 @@ test_set <- data[-train_index, ]
 
 ```
 
-Ensuering once again there are no NA's
+Ensuring once again there are no NA's
 ```{r}
 sum(is.na(train_set))
 sum(is.na(test_set))
@@ -302,6 +307,7 @@ Train Control for Cross Validation using parallel processing
 set.seed(123)
 
 cl <- makeCluster(detectCores() - 1)
+on.exit(stopCluster(cl))
 registerDoParallel(cl)
 
 ctrl <- trainControl(method = "repeatedcv", 
@@ -336,6 +342,7 @@ tune_grid_opt <- expand.grid(
 
 ```
 
+
 Training the model
 
 ```{r}
@@ -343,7 +350,8 @@ tuned_model <- train(Profit ~ .,
                      data = train_set, 
                      method = "neuralnet",
                      trControl = ctrl,
-                     tuneGrid = tune_grid_opt)
+                     tuneGrid = tune_grid_opt,
+                     metric = "Rsquared")
 stopCluster(cl)
 registerDoSEQ()
 print(summary(tuned_model))
@@ -351,16 +359,9 @@ print(summary(tuned_model))
 
 Visualize the model
 ```{r}
-#plot(tuned_model)
-```
-
-
-```{r}
 print(tuned_model$results)
-plot(tuned_model$results)
 
 print(tuned_model$resample)
-plot(tuned_model$resample)
 
 ```
 
@@ -377,27 +378,57 @@ Variable Interpretation
 # variable importance
 print(varImp(tuned_model))
 var_imp <- varImp(tuned_model, scale = FALSE)
-plot(var_imp, scales = list(y = list(cex = .95)))
+
+var_imp_df <- as.data.frame(var_imp$importance)
+var_imp_df$Variable <- rownames(var_imp_df)
+var_imp_df <- var_imp_df[order(-var_imp_df$Overall), ]
+
+top_var_imp_df <- var_imp_df[1:15, ]
+
+# plot
+ggplot(top_var_imp_df, aes(x = reorder(Variable, Overall), y = Overall, color = Overall, group = 1)) +
+    geom_point(size = 3) +
+    geom_segment(aes(x = reorder(Variable, Overall), 
+                     xend = reorder(Variable, Overall), 
+                     y = 0, 
+                     yend = Overall)) +
+    coord_flip() +
+    labs(title = "Top 15 most important variables for ANN model",
+         x = NULL,
+         y = "Importance") +
+    scale_color_gradient(low = "#7fcdbb", high = "#253494", guide = "none") +
+    theme_minimal() +
+    theme(text = element_text(family = "Times New Roman", size = 11))
 
 ```
 
-
 ```{r}
-# partial dependence plot for an important variable
-partial_plot <- partial(tuned_model, pred.var = "movie_rating", plot = TRUE, rug = TRUE)
-partial_plot
-partial_plot2 <- partial(tuned_model, pred.var = "director_star_power", plot = TRUE, rug = TRUE)
-partial_plot2
+# dependence plots
+partial_data_movie <- partial(tuned_model, pred.var = "movie_rating", plot = FALSE)
 
-```
+partial_plot_movie <- ggplot(partial_data_movie, aes(x = movie_rating, y = yhat)) +
+  geom_line(color = "#7fcdbb", linewidth = 1) +
+  labs(title = "Partial Dependence Plot",
+       x = "Movie Rating",
+       y = "Predicted Value") +
+  theme_minimal() +
+  theme(text = element_text(family = "Times New Roman", size = 11),
+        plot.title = element_text(hjust = 0.5))
 
-```{r}
-hist(train_set$movie_rating, main = "Distribution of Movie Rating in our model", xlab = "movie_rating", breaks = 10)
+print(partial_plot_movie)
 
-```
+partial_data_director <- partial(tuned_model, pred.var = "director_star_power", plot = FALSE)
 
-```{r}
-hist(train_set$director_star_power, main = "Distribution of Director's Star Power", xlab = "director_star_power", breaks = 10)
+partial_plot_director <- ggplot(partial_data_director, aes(x = director_star_power, y = yhat)) +
+  geom_line(color = "#253494", linewidth = 1) +
+  labs(title = "Partial Dependence Plot",
+       x = "Director Star Power",
+       y = "Predicted Value") +
+  theme_minimal() +
+  theme(text = element_text(family = "Times New Roman", size = 11),
+        plot.title = element_text(hjust = 0.5))
+
+print(partial_plot_director)
 
 ```
 
@@ -412,42 +443,31 @@ results <- postResample(pred = test_set$nn_predictions, obs = test_set$Profit)
 print(results)
 
 ```
-Variable Interpretation
 
 ```{r}
-# Variable Importance
-var_imp <- varImp(tuned_model, scale = FALSE)
-plot(var_imp, scales = list(y = list(cex = .95)))
-```
-
-
-```{r}
-# Plot observed vs. predicted values
 ggplot(test_set, aes(x = nn_predictions, y = Profit)) +
-  geom_point() +
-  labs(title = "Neural Network Observed VS Predicted", x = "Predicted", y = "Observed") +
-  geom_abline(intercept = 0, slope = 1, colour = "blue") +
-  theme_bw()
+  geom_point(aes(color = Profit), size = 3) +
+  geom_abline(intercept = 0, slope = 1, colour = "black") +
+  labs(title = "Neural Network Observed vs Predicted", x = "Predicted", y = "Observed") +
+  scale_color_gradient(low = "#7fcdbb", high = "#253494", guide = "none") +
+  theme_minimal() +
+  theme(text = element_text(family = "Times New Roman", size = 11),
+        plot.title = element_text(hjust = 0.5))
 ```
 
-
-### Artificial Neural Networks with recrusive elimination.
-
-We will perform recursive feature elimination with cross-validation 
-
+### Artificial Neural Networks with feature selection
 
 ```{r}
 set.seed(123)
 
-# Apply Boruta on the training data
+# Boruta on the training data
 boruta_model <- Boruta(Profit ~ ., data = train_set, doTrace = 2)
 print(boruta_model)
 
-# Finalize Boruta results
 final_boruta <- TentativeRoughFix(boruta_model)
 print(final_boruta)
 
-# Get the selected attributes
+# the selected variables
 selected_attributes <- getSelectedAttributes(final_boruta, withTentative = FALSE)
 print(selected_attributes)
 ```
@@ -467,6 +487,7 @@ Train control for hyper parameter tuning
 set.seed(123)
 
 cl <- makeCluster(detectCores() - 1)
+on.exit(stopCluster(cl))
 registerDoParallel(cl)
 
 ctrl_tune <- trainControl(method = "repeatedcv", 
@@ -482,20 +503,20 @@ Tuning grid
 tune_grid <- expand.grid(
   layer1 = c(2, 4, 6, 3, 5, 8, 10),  
   layer2 = c(0, 1, 2, 0 , 2, 4, 6),   
-  layer3 = c(0, 2, 4, 1, 3))
+  layer3 = c(0, 2, 4, 3))
 
 # Best combination 3 0 0, lets narrow around this numbers
 
 tune_grid_refined <- expand.grid(
-  layer1 = c(2, 3, 4, 5),  # Include values around the best layer1
-  layer2 = c(0, 1),        # Include a smaller range for layer2 around 0
-  layer3 = c(0, 1)         # Include a smaller range for layer3 around 0
+  layer1 = c(2, 3, 4, 5),  # Include values around the best layer 1
+  layer2 = c(0, 1),        # layer 2 around 0
+  layer3 = c(0, 1)         # layer 3 around 0
 )
 
 tune_grid_opt <- expand.grid(
-  layer1 = c(2),
-  layer2 = c(0),  
-  layer3 = c(0))
+  layer1 = c(4),
+  layer2 = c(1),  
+  layer3 = c(1))
 
 
 ```
@@ -508,7 +529,7 @@ tuned_model_with_feature_selection <- train(Profit ~ .,
                                             data = train_set_selected,
                                             method = "neuralnet",
                                             trControl = ctrl_tune,
-                                            tuneGrid = tune_grid)
+                                            tuneGrid = tune_grid_opt)
 stopCluster(cl)
 registerDoSEQ()
 
@@ -531,58 +552,24 @@ best_model2 <- tuned_model_with_feature_selection$bestTune
 print(best_model2)
 ```
 
-Variable Interpretation
-
-```{r}
-# variable importance
-var_imp_selected <- varImp(tuned_model_with_feature_selection, scale = FALSE)
-plot(var_imp_selected, scales = list(y = list(cex = .95)))
-
-# partial dependence plot
-partial_plot_selected <- partial(tuned_model_with_feature_selection, pred.var = "movie_rating", plot = TRUE, rug = TRUE)
-
-```
-
-
 #### Prediction
 To test the model in unseen data and validate the results attained
 
 ```{r}
-test_set_selected$nn_predictions <- predict(tuned_model_with_feature_selection, newdata = test_set_selected)
+test_set_selected$nn_predictions_selection <- predict(tuned_model_with_feature_selection, newdata = test_set_selected)
 
-results_selected <- postResample(pred = test_set_selected$nn_predictions, obs = test_set_selected$Profit)
+results_selected <- postResample(pred = test_set_selected$nn_predictions_selection, obs = test_set_selected$Profit)
 print(results_selected)
 ```
 
-Variable Interpretation
 
-```{r}
-# variable importance
-var_imp_selected <- varImp(tuned_model_with_feature_selection, scale = FALSE)
-plot(var_imp_selected, scales = list(y = list(cex = .95)))
-
-# partial dependence plot
-partial_plot_selected <- partial(tuned_model_with_feature_selection, pred.var = "movie_rating", plot = TRUE, rug = TRUE)
-
-```
-
-
-```{r}
-# Plot observed vs. predicted values
-ggplot(test_set_selected, aes(x = nn_predictions, y = Profit)) +
-  geom_point() +
-  labs(title = "Neural Network Observed VS Predicted", x = "Predicted", y = "Observed") +
-  geom_abline(intercept = 0, slope = 1, colour = "blue") +
-  theme_bw()
-```
-
-
-### Support Vector Machine with the selected features
+### Support Vector Machine
 
 ```{r}
 set.seed(123)
 
 cl <- makeCluster(detectCores() - 1)
+on.exit(stopCluster(cl))
 registerDoParallel(cl)
 
 ctrl_tune <- trainControl(method = "repeatedcv", 
@@ -597,20 +584,23 @@ Tune Grid
 ```{r}
 tune_grid <- expand.grid(
   C = c(0.1, 1, 5, 10, 20, 50),   
-  sigma = c(0.01, 0.05, 0.1, 0.2, 0.5, 1), 
-  epsilon = c(0.1, 0.5, 1, 2) 
+  sigma = c(0.01, 0.05, 0.1, 0.2, 0.5, 1)
 )
 
+tune_grid_opt <- expand.grid(
+  C = 5,
+  sigma = 0.1
+)
 ```
 
 Training the model
 
 ```{r}
 tuned_svm_model <- train(Profit ~ ., 
-                         data = train_set_selected,
+                         data = train_set,
                          method = "svmRadial",
                          trControl = ctrl_tune,
-                         tuneGrid = tune_grid,
+                         tuneGrid = tune_grid_opt,
                          metric = "Rsquared")
 
 stopCluster(cl)
@@ -621,11 +611,8 @@ Visualizing results
 
 ```{r}
 print(tuned_svm_model$results)
-plot(tuned_svm_model$results)
 
 print(tuned_svm_model$resample)
-plot(tuned_svm_model$resample)
-
 ```
 
 Best Model
@@ -637,65 +624,91 @@ print(best_svm_model)
 
 Variable Interpretation
 ```{r}
-# variable importance
 var_imp_selected <- varImp(tuned_svm_model, scale = FALSE)
-plot(var_imp_selected, scales = list(y = list(cex = .95)))
 
-# partial dependence plot for an important variable
-partial_plot_selected <- partial(tuned_svm_model, pred.var = "director_star_power", plot = TRUE, rug = TRUE)
+var_imp_selected_df <- as.data.frame(var_imp_selected$importance)
+var_imp_selected_df$Variable <- rownames(var_imp_selected_df)
+var_imp_selected_df <- var_imp_selected_df[order(-var_imp_selected_df$Overall), ]
 
+top_var_imp_selected_df <- var_imp_selected_df[1:15, ]
+
+
+ggplot(top_var_imp_selected_df, aes(x = reorder(Variable, Overall), y = Overall, color = Overall, group = 1)) +
+    geom_point(size = 3) +
+    geom_segment(aes(x = reorder(Variable, Overall), 
+                     xend = reorder(Variable, Overall), 
+                     y = 0, 
+                     yend = Overall)) +
+    coord_flip() +
+    labs(title = "Top 15 most important variables for SVM model",
+         x = NULL,
+         y = "Importance") +
+    scale_color_gradient(low = "#7fcdbb", high = "#253494", guide = "none") +
+    theme_minimal() +
+    theme(text = element_text(family = "Times New Roman", size = 11))
 ```
 
 ```{r}
-hist(train_set_selected$director_star_power, main = "Distribution of Director's Star Power", xlab = "director_star_power", breaks = 10)
+# partial dependence plot
+partial_data_director_svm <- partial(tuned_svm_model, pred.var = "director_star_power", plot = FALSE)
 
+partial_plot_director_svm <- ggplot(partial_data_director_svm, aes(x = director_star_power, y = yhat)) +
+  geom_line(color = "#253494", linewidth = 1) +
+  labs(title = "Partial Dependence Plot",
+       x = "Director Star Power",
+       y = "Predicted Value") +
+  theme_minimal() +
+  theme(text = element_text(family = "Times New Roman", size = 11),
+        plot.title = element_text(hjust = 0.5))
+
+print(partial_plot_director_svm)
+
+partial_data_movie_svm <- partial(tuned_svm_model, pred.var = "movie_rating", plot = FALSE)
+
+partial_plot_movie_svm <- ggplot(partial_data_movie_svm, aes(x = movie_rating, y = yhat)) +
+  geom_line(color = "#7fcdbb", linewidth = 1) +
+  labs(title = "Partial Dependence Plot",
+       x = "Movie Rating",
+       y = "Predicted Value") +
+  theme_minimal() +
+  theme(text = element_text(family = "Times New Roman", size = 11),
+        plot.title = element_text(hjust = 0.5))
+
+print(partial_plot_movie_svm)
 ```
 
 #### Predicion
 Testing the model in unseen data and validating the results attained
 
 ```{r}
-test_set_selected$svm_predictions <- predict(tuned_svm_model, newdata = test_set_selected)
+test_set$svm_predictions <- predict(tuned_svm_model, newdata = test_set)
 
-results_selected <- postResample(pred = test_set_selected$svm_predictions, obs = test_set_selected$Profit)
-print(results_selected)
-```
-
-Variable Interpretation
-```{r}
-# variable importance
-var_imp_selected <- varImp(tuned_svm_model, scale = FALSE)
-plot(var_imp_selected, scales = list(y = list(cex = .95)))
-```
-
-```{r}
-# partial dependence plot 
-partial_plot_selected <- partial(tuned_svm_model, pred.var = "movie_rating", plot = TRUE, rug = TRUE)
-partial_plot_selected
-
-# partial dependence plot 
-partial_plot_selected2 <- partial(tuned_svm_model, pred.var = "director_star_power", plot = TRUE, rug = TRUE)
-partial_plot_selected2
+results_svm<- postResample(pred = test_set$svm_predictions, obs = test_set$Profit)
+print(results_svm)
 ```
 
 
 ```{r}
-# Plot observed vs. predicted values
-ggplot(test_set_selected, aes(x = svm_predictions, y = Profit)) +
-  geom_point() +
-  labs(title = "SVM Observed VS Predicted", x = "Predicted", y = "Observed") +
-  geom_abline(intercept = 0, slope = 1, colour = "blue") +
-  theme_bw()
+
+ggplot(test_set, aes(x = svm_predictions, y = Profit)) +
+  geom_point(aes(color = Profit), size = 3) +
+  geom_abline(intercept = 0, slope = 1, colour = "black") +
+  labs(title = "Support Vector Machine Observed vs Predicted", x = "Predicted", y = "Observed") +
+  scale_color_gradient(low = "#7fcdbb", high = "#253494", guide = "none") +
+  theme_minimal() +
+  theme(text = element_text(family = "Times New Roman", size = 11),
+        plot.title = element_text(hjust = 0.5))
+
 ```
 
 ### Esemble Model
 
 ```{r}
 # Generate predictions from the SVM model
-svm_predictions <- predict(tuned_svm_model, newdata = test_set_selected)
+svm_predictions <- predict(tuned_svm_model, newdata = test_set)
 
 # Generate predictions from the ANN model
-ann_predictions <- predict(tuned_model_with_feature_selection, newdata = test_set_selected)
+ann_predictions <- predict(tuned_model, newdata = test_set)
 
 ```
 
@@ -704,10 +717,13 @@ ensemble_predictions <- (svm_predictions + ann_predictions) / 2
 ```
 
 ```{r}
-# Evaluate the ensemble model performance
-actuals <- test_set_selected$Profit
+actuals <- test_set$Profit
+```
 
-# Calculate performance metrics
+Compering the model's metrics
+
+```{r}
+# Performance Metrics
 mse_ensemble <- mean((ensemble_predictions - actuals)^2)
 rmse_ensemble <- sqrt(mse_ensemble)
 mae_ensemble <- mean(abs(ensemble_predictions - actuals))
@@ -719,11 +735,8 @@ cat("Root Mean Squared Error (RMSE):", rmse_ensemble, "\n")
 cat("Mean Absolute Error (MAE):", mae_ensemble, "\n")
 cat("R-squared (R2):", r2_ensemble, "\n")
 
-```
+# Comparing with Individual Models
 
-Compering with the individual model's
-
-```{r}
 # SVM Model Performance
 mse_svm <- mean((svm_predictions - actuals)^2)
 rmse_svm <- sqrt(mse_svm)
@@ -748,15 +761,8 @@ cat("Root Mean Squared Error (RMSE):", rmse_ann, "\n")
 cat("Mean Absolute Error (MAE):", mae_ann, "\n")
 cat("R-squared (R2):", r2_ann, "\n")
 ```
+The ensemble model show the most promise.It has the lowest MSE, RMSE, and MAE, and the highest R-squared value, indicating that it performs better than both the SVM and ANN models in terms of prediction accuracy and explained variance.
 
-```{r}
-# Variable Importance from SVM
-var_imp_svm <- varImp(tuned_svm_model, scale = FALSE)
-plot(var_imp_svm, scales = list(y = list(cex = .95)))
 
-# Variable Importance from ANN
-var_imp_ann <- varImp(tuned_model_with_feature_selection, scale = FALSE)
-plot(var_imp_ann, scales = list(y = list(cex = .95)))
 
-```
 
