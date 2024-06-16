@@ -1,0 +1,751 @@
+---
+title: "Model"
+author: "Sofia Villamil"
+date: "2024-06-13"
+output: html_document
+---
+
+# Model
+
+```{r}
+rm(list = ls())
+```
+
+#### Library
+
+```{r message=False}
+library(dplyr)
+library(readr)
+library(car)
+library(ggplot2)
+library(reshape2)
+library(corrplot)
+library(caret)
+library(neuralnet)
+library(pdp) # For partial dependence plots
+library(doParallel)
+library(e1071)
+library(Boruta)
+```
+
+```{r message=False}
+data_final_8 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Final Part 4/data_final_7.csv")
+```
+
+### Selecting the variables
+
+-   World Wide Gross: The total World Wide Gross of the movie.
+
+-   Budget: The production budget of the movie.
+
+-   Lead is a woman: Binary variable that takes the value 1 if the First Actor is a woman.
+
+-   Genre: Dummy variable that takes the value 1 if the movie is any of this genres: Action,Adventure,Animation,Biography,Comedy,Crime,Documentary,Drama,Fantasy,Horror and Mystery.
+
+-   MPAA: Dummy variable that takes the value 1 if the movie is rated by any of this categories: General Audiences, Not Rated, Parental Guidance Suggested, Parents Strongly Cautioned and Restricted.
+
+-   Original Language: Dummy variable that takes the value 1 for the language the movie is in.
+
+-   Duration of the movie: Numeric variable normalized that establish the duration of the movie.
+
+-   Release data: We have a variable for the date, the month and the year.
+
+-   Movie Age: Numeric variable that shows the age the movie has.
+
+-   If its a weekend: Binary variable that take the value 1 if the movie was released in a weekend.
+
+-   Season: Dummy variable that takes the value 1 for the season that the movie was released.
+
+-   Movie Score: Numeric normalized variable that takes into account all the rating and number of votes attained for IMDb and Rotten Tomatoes scores in their respective websites.
+
+-   First Actor and Second Actor Score: Numeric normalized variable that takes into account the awards and the number of movies they have previously being in to generate a score.
+
+-   Director Score: Numeric normalized variable that take into account the awards and the number of movies the director appears in out data set to generate a score.
+
+-   Overall Sentiment Score: Numeric variable created using reviews gathered from IMDB and Rotten Tomatoes. These reviews were analyzed using sentiment analysis to calculate the average sentiment for each movie.
+
+
+```{r}
+selected_data <- data_final_8 %>%
+  select(world_wide_gross, Budget,lead_is_woman, 
+    `Genre_imdb.Action`, `Genre_imdb.Adventure`, `Genre_imdb.Animation`, 
+    `Genre_imdb.Biography`, `Genre_imdb.Comedy`, `Genre_imdb.Crime`, 
+    `Genre_imdb.Documentary`, `Genre_imdb.Drama`, 
+    `Genre_imdb.Fantasy`, `Genre_imdb.Horror`, `Genre_imdb.Mystery`, `MPAA.General Audiences`, normalized_director_score,
+    `MPAA.Not Rated`, `MPAA.Parental Guidance Suggested`, 
+    `MPAA.Parents Strongly Cautioned`, `MPAA.Restricted`, 
+    duration_normalized, release_year, release_month, release_day, 
+    movie_age, is_weekend, seasonFall, seasonSpring, seasonSummer, 
+    seasonWinter, movie_score, FirstActor_score, 
+    SecondActor_score, overall_sentiment_score, overall_sentiment_class, 
+    view_count_normalized, FirstActor_followers, SecondActor_followers
+  )
+```
+
+## Cleaning some things
+
+**Release Month**
+
+```{r}
+selected_data <- selected_data %>% mutate(release_month = as.factor(release_month))
+
+release_month_dummies <- model.matrix(~ release_month - 1, data = selected_data)
+
+release_month_dummies <- as.data.frame(release_month_dummies)
+colnames(release_month_dummies) <- gsub("release_month", "month_", colnames(release_month_dummies))
+
+selected_data <- cbind(selected_data, release_month_dummies)
+
+```
+
+**Release Year and Age Movie**
+
+We are going to standardize age and remove release year.
+
+```{r}
+# Normalization function
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+# Normalize the movie_age variable
+selected_data$movie_age <- as.numeric(selected_data$movie_age)
+selected_data$movie_age_scaled <- normalize(selected_data$movie_age)
+
+```
+
+```{r}
+selected_data <- selected_data %>%
+  select(-movie_age, -release_year,-release_day,-release_month,-overall_sentiment_class)
+```
+
+**Lead is a woman**
+There are only 4 observations for this variables in the final data set so we are going to eliminate it.
+
+```{r}
+selected_data <- selected_data %>%
+  select(-lead_is_woman)
+```
+
+### Final Data Set
+
+This will be done later.
+
+```{r}
+final_data <- selected_data %>%
+  select(-view_count_normalized, -FirstActor_followers, -SecondActor_followers)
+```
+
+```{r}
+variable_classes <- sapply(final_data, class)
+```
+
+#### Dependent Variable
+
+We will use the methodology used by Rhee and Zulkernine (2016) for calculating profit. Reference: Rhee, T. G., & Zulkernine, F. (2016, December). Predicting movie box office profitability: a neural network approach.
+
+```{r}
+final_data$Profit <- final_data$world_wide_gross * 0.5 - final_data$Budget
+
+```
+
+```{r}
+# Normalize the movie_age variable
+final_data$Profit <- as.numeric(final_data$Profit)
+final_data$Profit <- normalize(final_data$Profit)
+```
+
+```{r}
+final_data <- final_data %>%
+  select(-Budget, -world_wide_gross)
+```
+
+```{r}
+final_data <- na.omit(final_data)
+```
+
+#### Dummy Variables
+
+We are going to exclude one dummy variable from all our dummies to not fall into the dummy trap
+
+```{r}
+data <- final_data %>%
+    select(-`MPAA.Not Rated`,-Genre_imdb.Action)
+```
+
+### Correlation
+
+```{r}
+cor_matrix <- cor(data)
+```
+
+From what we can observe SeasonFall and Duration are highly correlated with all the variables.
+
+```{r}
+correlation_value <- cor(data$duration_normalized, data$seasonFall, use="complete.obs")
+
+```
+
+The problem is between this two variables.
+
+```{r}
+# Compute the correlation matrix without "duration_normalized"
+cor_matrix_without_duration <- cor(data[, !names(data) %in% "duration_normalized"], use="complete.obs")
+
+```
+
+```{r}
+# Compute the correlation matrix without "SeasonFall"
+
+cor_matrix_without_fall <- cor(data[, !names(data) %in% "seasonFall"], use="complete.obs")
+
+```
+
+```{r}
+data <-data %>%
+  select(- seasonFall)
+```
+
+Due to this, we decided that this will be the omitted variable for this dummy.
+
+### VIF
+
+```{r}
+fit <- lm(Profit ~ ., data = data)
+summary(fit)
+```
+
+For the dummy month there are certain months that are perfect linear dependencies so we decided to omit them.
+
+```{r}
+data <- data %>%
+select(-month_12,-month_11,-month_5,-month_8)
+
+```
+
+Now let's calculate the VIF values
+
+```{r}
+model <- lm(Profit ~ ., data = data)
+vif_values <- vif(model)
+print(vif_values)
+
+```
+
+There is no high VIF value so we can continue.
+
+Let's rename the variables for more clarity before starting with the model.
+
+```{r}
+new_names <- c( "Genre_imdb.Adventure" = "Genre_Adventure",
+               "Genre_imdb.Animation" = "Genre_Animation",
+               "Genre_imdb.Biography" = "Genre_Biography",
+               "Genre_imdb.Comedy" = "Genre_Comedy",
+               "Genre_imdb.Crime" = "Genre_Crime",
+               "Genre_imdb.Documentary" = "Genre_Documentary",
+               "Genre_imdb.Drama" = "Genre_Drama",
+               "Genre_imdb.Fantasy" = "Genre_Fantasy",
+               "Genre_imdb.Horror" = "Genre_imdb_Horror",
+               "Genre_imdb.Mystery" = "Genre_Mystery",
+ `MPAA.General Audiences`= "MPAA_General_Audiences",
+               `MPAA.Parents Strongly Cautioned` = "MPAA_Parents_Strongly_Cautioned",
+               `MPAA.Parental Guidance Suggested` = "MPAA_Parental_Guidance_Suggested",
+               "MPAA.Restricted" = "MPAA_Restricted",
+               "duration_normalized" = "duration_movie",
+               "is_weekend" = "is_weekend",
+               "seasonSpring" = "season_spring",
+               "seasonSummer" = "season_summer",
+               "seasonWinter" = "season_winter",
+               "movie_score" = "movie_rating",
+               "normalized_director_score" = "director_star_power",
+               "FirstActor_score" = "first_actor_star_power",
+               "SecondActor_score" = "second_actor_star_power",
+               "overall_sentiment_score" = "overall_sentiment_reviews",
+               "month_1" = "month_1",
+               "month_2" = "month_2",
+               "month_3" = "month_3",
+               "month_4" = "month_4",
+               "month_6" = "month_6",
+               "month_7" = "month_7",
+               "month_9" = "month_9",
+               "month_10" = "month_10",
+               "movie_age_scaled" = "movie_age",
+               "Profit" = "Profit")
+
+names(data) <- new_names[names(data)]
+```
+
+## Model
+
+Splitting the data
+
+```{r}
+set.seed(123) 
+train_index <- createDataPartition(data$Profit, p = 0.8, list = FALSE)
+
+train_set <- data[train_index, ]
+test_set <- data[-train_index, ]
+
+```
+
+Ensuering once again there are no NA's
+```{r}
+sum(is.na(train_set))
+sum(is.na(test_set))
+```
+
+### Artificial Neural Networks
+
+Train Control for Cross Validation using parallel processing
+
+```{r}
+set.seed(123)
+
+cl <- makeCluster(detectCores() - 1)
+registerDoParallel(cl)
+
+ctrl <- trainControl(method = "repeatedcv", 
+                     number = 5, repeats = 3,
+                     allowParallel = TRUE,  
+                     returnResamp = "all",
+                     savePredictions = "all") 
+
+```
+
+Tune Grid Parameters
+
+```{r}
+tune_grid <- expand.grid(
+  layer1 = c(2, 4, 6, 8, 10),  
+  layer2 = c(0, 1, 2, 4, 6),   
+  layer3 = c(0, 2, 4))
+
+# Best combination 4 1 2, lets narrow around this numbers
+
+tune_grid_refined <- expand.grid(
+  layer1 = c(3, 4, 5),       # Narrow around 4
+  layer2 = c(0, 1, 2),       # Keep the same range around 1
+  layer3 = c(1, 2, 3)        # Narrow around 2
+)
+
+```
+
+Training the model
+
+```{r}
+tuned_model <- train(Profit ~ ., 
+                     data = train_set, 
+                     method = "neuralnet",
+                     trControl = ctrl,
+                     tuneGrid = tune_grid_refined)
+stopCluster(cl)
+registerDoSEQ()
+print(summary(tuned_model))
+```
+
+Visualize the model
+```{r}
+plot(tuned_model)
+```
+
+
+```{r}
+print(tuned_model$results)
+plot(tuned_model$results)
+
+print(tuned_model$resample)
+plot(tuned_model$resample)
+
+```
+
+Best Model
+
+```{r}
+best_model <- tuned_model$bestTune
+print(best_model)
+```
+
+Variable Interpretation
+
+```{r}
+# variable importance
+print(varImp(tuned_model))
+var_imp <- varImp(tuned_model, scale = FALSE)
+plot(var_imp, scales = list(y = list(cex = .95)))
+
+```
+
+
+```{r}
+# partial dependence plot for an important variable
+partial_plot <- partial(tuned_model, pred.var = "movie_rating", plot = TRUE, rug = TRUE)
+partial_plot
+partial_plot2 <- partial(tuned_model, pred.var = "director_star_power", plot = TRUE, rug = TRUE)
+partial_plot2
+
+```
+
+```{r}
+hist(train_set$movie_rating, main = "Distribution of Movie Rating in our model", xlab = "movie_rating", breaks = 10)
+
+```
+
+```{r}
+hist(train_set$director_star_power, main = "Distribution of Director's Star Power", xlab = "director_star_power", breaks = 10)
+
+```
+
+#### Prediction
+
+To test the model in unseen data and validate the results attained
+
+```{r}
+test_set$nn_predictions <- predict(tuned_model, newdata = test_set)
+
+results <- postResample(pred = test_set$nn_predictions, obs = test_set$Profit)
+print(results)
+
+```
+Variable Interpretation
+
+```{r}
+# Variable Importance
+var_imp <- varImp(tuned_model, scale = FALSE)
+plot(var_imp, scales = list(y = list(cex = .95)))
+```
+
+
+```{r}
+# Plot observed vs. predicted values
+ggplot(test_set, aes(x = nn_predictions, y = Profit)) +
+  geom_point() +
+  labs(title = "Neural Network Observed VS Predicted", x = "Predicted", y = "Observed") +
+  geom_abline(intercept = 0, slope = 1, colour = "blue") +
+  theme_bw()
+```
+
+
+### Artificial Neural Networks with recrusive elimination.
+
+We will perform recursive feature elimination with cross-validation 
+
+
+```{r}
+set.seed(123)
+
+# Apply Boruta on the training data
+boruta_model <- Boruta(Profit ~ ., data = train_set, doTrace = 2)
+print(boruta_model)
+
+# Finalize Boruta results
+final_boruta <- TentativeRoughFix(boruta_model)
+print(final_boruta)
+
+# Get the selected attributes
+selected_attributes <- getSelectedAttributes(final_boruta, withTentative = FALSE)
+print(selected_attributes)
+```
+
+Subset of the train and test sets to include only selected features
+
+```{r}
+train_set_selected <- train_set[, c(selected_attributes, "Profit")]
+test_set_selected <- test_set[, c(selected_attributes, "Profit")]
+```
+
+#### Modeling the ANN
+
+Train control for hyper parameter tuning
+
+```{r}
+set.seed(123)
+
+cl <- makeCluster(detectCores() - 1)
+registerDoParallel(cl)
+
+ctrl_tune <- trainControl(method = "repeatedcv", 
+                          number = 5, repeats = 2,
+                          allowParallel = TRUE, 
+                          returnResamp = "all", 
+                          savePredictions = "all")
+```
+
+Tuning grid
+
+```{r}
+tune_grid <- expand.grid(
+  layer1 = c(2, 4, 6, 3, 5, 8, 10),  
+  layer2 = c(0, 1, 2, 0 , 2, 4, 6),   
+  layer3 = c(0, 2, 4, 1, 3))
+
+# Best combination 3 0 0, lets narrow around this numbers
+
+tune_grid_refined <- expand.grid(
+  layer1 = c(2, 3, 4, 5),  # Include values around the best layer1
+  layer2 = c(0, 1),        # Include a smaller range for layer2 around 0
+  layer3 = c(0, 1)         # Include a smaller range for layer3 around 0
+)
+
+```
+
+
+Training the model with selected features
+
+```{r}
+tuned_model_with_feature_selection <- train(Profit ~ ., 
+                                            data = train_set_selected,
+                                            method = "neuralnet",
+                                            trControl = ctrl_tune,
+                                            tuneGrid = tune_grid,
+                                            metric = "Rsquared")
+stopCluster(cl)
+registerDoSEQ()
+
+print(summary(tuned_model_with_feature_selection))
+```
+
+Visualizing the results
+```{r}
+print(tuned_model_with_feature_selection$results)
+plot(tuned_model_with_feature_selection$results)
+
+print(tuned_model_with_feature_selection$resample)
+plot(tuned_model_with_feature_selection$resample)
+
+```
+
+Best Model
+```{r}
+best_model2 <- tuned_model_with_feature_selection$bestTune
+print(best_model2)
+```
+
+Variable Interpretation
+
+```{r}
+# variable importance
+var_imp_selected <- varImp(tuned_model_with_feature_selection, scale = FALSE)
+plot(var_imp_selected, scales = list(y = list(cex = .95)))
+
+# partial dependence plot
+partial_plot_selected <- partial(tuned_model_with_feature_selection, pred.var = "movie_rating", plot = TRUE, rug = TRUE)
+
+```
+
+
+#### Prediction
+To test the model in unseen data and validate the results attained
+
+```{r}
+test_set_selected$nn_predictions <- predict(tuned_model_with_feature_selection, newdata = test_set_selected)
+
+results_selected <- postResample(pred = test_set_selected$nn_predictions, obs = test_set_selected$Profit)
+print(results_selected)
+```
+
+Variable Interpretation
+
+```{r}
+# variable importance
+var_imp_selected <- varImp(tuned_model_with_feature_selection, scale = FALSE)
+plot(var_imp_selected, scales = list(y = list(cex = .95)))
+
+# partial dependence plot
+partial_plot_selected <- partial(tuned_model_with_feature_selection, pred.var = "movie_rating", plot = TRUE, rug = TRUE)
+
+```
+
+
+```{r}
+# Plot observed vs. predicted values
+ggplot(test_set_selected, aes(x = nn_predictions, y = Profit)) +
+  geom_point() +
+  labs(title = "Neural Network Observed VS Predicted", x = "Predicted", y = "Observed") +
+  geom_abline(intercept = 0, slope = 1, colour = "blue") +
+  theme_bw()
+```
+
+
+### Support Vector Machine with the selected features
+
+```{r}
+set.seed(123)
+
+cl <- makeCluster(detectCores() - 1)
+registerDoParallel(cl)
+
+ctrl_tune <- trainControl(method = "repeatedcv", 
+                          number = 5, repeats = 3,
+                          allowParallel = TRUE, 
+                          returnResamp = "all", 
+                          savePredictions = "all")
+```
+
+Tune Grid
+
+```{r}
+tune_grid <- expand.grid(
+  C = c(0.1, 1, 5, 10, 20, 50),   
+  sigma = c(0.01, 0.05, 0.1, 0.2, 0.5, 1), 
+  epsilon = c(0.1, 0.5, 1, 2) 
+)
+
+```
+
+Training the model
+
+```{r}
+tuned_svm_model <- train(Profit ~ ., 
+                         data = train_set_selected,
+                         method = "svmRadial",
+                         trControl = ctrl_tune,
+                         tuneGrid = tune_grid,
+                         metric = "Rsquared")
+
+stopCluster(cl)
+registerDoSEQ()
+```
+
+Visualizing results
+
+```{r}
+print(tuned_svm_model$results)
+plot(tuned_svm_model$results)
+
+print(tuned_svm_model$resample)
+plot(tuned_svm_model$resample)
+
+```
+
+Best Model
+
+```{r}
+best_svm_model <- tuned_svm_model$bestTune
+print(best_svm_model)
+```
+
+Variable Interpretation
+```{r}
+# variable importance
+var_imp_selected <- varImp(tuned_svm_model, scale = FALSE)
+plot(var_imp_selected, scales = list(y = list(cex = .95)))
+
+# partial dependence plot for an important variable
+partial_plot_selected <- partial(tuned_svm_model, pred.var = "director_star_power", plot = TRUE, rug = TRUE)
+
+```
+
+```{r}
+hist(train_set_selected$director_star_power, main = "Distribution of Director's Star Power", xlab = "director_star_power", breaks = 10)
+
+```
+
+#### Predicion
+Testing the model in unseen data and validating the results attained
+
+```{r}
+test_set_selected$svm_predictions <- predict(tuned_svm_model, newdata = test_set_selected)
+
+results_selected <- postResample(pred = test_set_selected$svm_predictions, obs = test_set_selected$Profit)
+print(results_selected)
+```
+
+Variable Interpretation
+```{r}
+# variable importance
+var_imp_selected <- varImp(tuned_svm_model, scale = FALSE)
+plot(var_imp_selected, scales = list(y = list(cex = .95)))
+```
+
+```{r}
+# partial dependence plot 
+partial_plot_selected <- partial(tuned_svm_model, pred.var = "movie_rating", plot = TRUE, rug = TRUE)
+partial_plot_selected
+
+# partial dependence plot 
+partial_plot_selected2 <- partial(tuned_svm_model, pred.var = "director_star_power", plot = TRUE, rug = TRUE)
+partial_plot_selected2
+```
+
+
+```{r}
+# Plot observed vs. predicted values
+ggplot(test_set_selected, aes(x = svm_predictions, y = Profit)) +
+  geom_point() +
+  labs(title = "SVM Observed VS Predicted", x = "Predicted", y = "Observed") +
+  geom_abline(intercept = 0, slope = 1, colour = "blue") +
+  theme_bw()
+```
+
+### Esemble Model
+
+```{r}
+# Generate predictions from the SVM model
+svm_predictions <- predict(tuned_svm_model, newdata = test_set_selected)
+
+# Generate predictions from the ANN model
+ann_predictions <- predict(tuned_model_with_feature_selection, newdata = test_set_selected)
+
+```
+
+```{r}
+ensemble_predictions <- (svm_predictions + ann_predictions) / 2
+```
+
+```{r}
+# Evaluate the ensemble model performance
+actuals <- test_set_selected$Profit
+
+# Calculate performance metrics
+mse_ensemble <- mean((ensemble_predictions - actuals)^2)
+rmse_ensemble <- sqrt(mse_ensemble)
+mae_ensemble <- mean(abs(ensemble_predictions - actuals))
+r2_ensemble <- 1 - sum((ensemble_predictions - actuals)^2) / sum((actuals - mean(actuals))^2)
+
+cat("Ensemble Model Performance:\n")
+cat("Mean Squared Error (MSE):", mse_ensemble, "\n")
+cat("Root Mean Squared Error (RMSE):", rmse_ensemble, "\n")
+cat("Mean Absolute Error (MAE):", mae_ensemble, "\n")
+cat("R-squared (R2):", r2_ensemble, "\n")
+
+```
+
+Compering with the individual model's
+
+```{r}
+# SVM Model Performance
+mse_svm <- mean((svm_predictions - actuals)^2)
+rmse_svm <- sqrt(mse_svm)
+mae_svm <- mean(abs(svm_predictions - actuals))
+r2_svm <- 1 - sum((svm_predictions - actuals)^2) / sum((actuals - mean(actuals))^2)
+
+cat("SVM Model Performance:\n")
+cat("Mean Squared Error (MSE):", mse_svm, "\n")
+cat("Root Mean Squared Error (RMSE):", rmse_svm, "\n")
+cat("Mean Absolute Error (MAE):", mae_svm, "\n")
+cat("R-squared (R2):", r2_svm, "\n")
+
+# ANN Model Performance
+mse_ann <- mean((ann_predictions - actuals)^2)
+rmse_ann <- sqrt(mse_ann)
+mae_ann <- mean(abs(ann_predictions - actuals))
+r2_ann <- 1 - sum((ann_predictions - actuals)^2) / sum((actuals - mean(actuals))^2)
+
+cat("ANN Model Performance:\n")
+cat("Mean Squared Error (MSE):", mse_ann, "\n")
+cat("Root Mean Squared Error (RMSE):", rmse_ann, "\n")
+cat("Mean Absolute Error (MAE):", mae_ann, "\n")
+cat("R-squared (R2):", r2_ann, "\n")
+```
+
+```{r}
+# Variable Importance from SVM
+var_imp_svm <- varImp(tuned_svm_model, scale = FALSE)
+plot(var_imp_svm, scales = list(y = list(cex = .95)))
+
+# Variable Importance from ANN
+var_imp_ann <- varImp(tuned_model_with_feature_selection, scale = FALSE)
+plot(var_imp_ann, scales = list(y = list(cex = .95)))
+
+```
+

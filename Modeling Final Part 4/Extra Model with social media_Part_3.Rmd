@@ -1,0 +1,139 @@
+---
+title: "Extra Model with social media_Part_3"
+author: "Sofia Villamil"
+date: "2024-06-15"
+output: html_document
+---
+ ## Support Vector Machine Model
+ 
+This will be the variables we are going to add to our model.
+
+-   View Count in Trailer: Numeric normalized variable created with the number of view the trailer for each movie has on Youtube.
+
+-   First Actor and Second Actor Instagram Followers: Numeric normalized variable created with the total amount of followers each actor has on Instagram.
+
+Due to the limits and time obtaining the data for the followers of each actor the data set is really small, this is why we are going to use a SVM model as it able to deal better with smaller data set.
+
+```{r}
+rm(list = ls())
+```
+
+#### Library
+```{r}
+library(readr)
+library(e1071)
+
+```
+
+### Creating the variables for this small data set
+
+```{r}
+data_final <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv", show_col_types = FALSE)
+```
+
+### Youtube Variable
+```{r}
+results_youtube_1 <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/Youtube and Instagram Data/results_youtube_1.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
+```
+
+```{r}
+# Function to convert view counts to numeric values
+convert_view_count <- function(view_count) {
+  if (grepl("B", view_count, ignore.case = TRUE)) {
+    return(as.numeric(gsub("[^0-9.]", "", view_count)) * 1e9)
+  } else if (grepl("M", view_count, ignore.case = TRUE)) {
+    return(as.numeric(gsub("[^0-9.]", "", view_count)) * 1e6)
+  } else if (grepl("K", view_count, ignore.case = TRUE)) {
+    return(as.numeric(gsub("[^0-9.]", "", view_count)) * 1e3)
+  } else {
+    return(as.numeric(gsub("[^0-9.]", "", view_count)))
+  }
+}
+
+# Apply the conversion function
+results_youtube_1$view_count <- sapply(results_youtube_1$view_count, convert_view_count)
+
+# Function to convert scientific notation to fixed notation
+convert_to_fixed <- function(x) {
+  return(format(x, scientific = FALSE))
+}
+
+# to observe the results better
+results_youtube_1$view_count_fixed <- sapply(results_youtube_1$view_count, convert_to_fixed)
+```
+
+```{r}
+# Function to normalize data
+normalize_min_max <- function(x) {
+  return((x - min(x)) / (max(x) - min(x)))
+}
+
+results_youtube_1$view_count_normalized <- normalize_min_max(results_youtube_1$view_count)
+
+# to observe the results better
+results_youtube_1$view_count_normalized_fixed <- sapply(results_youtube_1$view_count_normalized, convert_to_fixed)
+```
+
+```{r}
+data_final_6 <- merge(data_final_6, results_youtube_1, by = "title", all.x = TRUE)
+```
+
+### Instagram Variable
+```{r}
+results_instagram_1 <- read_excel("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/Youtube and Instagram Data/results_instagram_1.xlsx")
+results_instagram_1$Instagram_followers <-results_instagram_1$`Instagram Followers`
+
+```
+
+```{r}
+# Function to convert view counts to numeric values
+convert_followers <- function(Instagram_followers) {
+  if (grepl("B", Instagram_followers, ignore.case = TRUE)) {
+    return(as.numeric(gsub("[^0-9.]", "", Instagram_followers)) * 1e9)
+  } else if (grepl("M", Instagram_followers, ignore.case = TRUE)) {
+    return(as.numeric(gsub("[^0-9.]", "", Instagram_followers)) * 1e6)
+  } else if (grepl("K", Instagram_followers, ignore.case = TRUE)) {
+    return(as.numeric(gsub("[^0-9.]", "", Instagram_followers)) * 1e3)
+  } else {
+    return(as.numeric(gsub("[^0-9.]", "", Instagram_followers)))
+  }
+}
+
+# Apply the conversion function
+results_instagram_1$Instagram_followers <- sapply(results_instagram_1$Instagram_followers, convert_followers)
+
+results_instagram_1$Instagram_followers[is.na(results_instagram_1$Instagram_followers)] <- 0
+
+```
+
+```{r}
+# Function to normalize data using Min-Max Scaling
+normalize_min_max <- function(x) {
+  (x - min(x)) / (max(x) - min(x))
+}
+
+# Apply the normalization function to the Instagram_followers column
+results_instagram_1$Instagram_followers_normalized <- normalize_min_max(results_instagram_1$Instagram_followers)
+
+results_instagram_1 <- results_instagram_1 %>% 
+  select(name, Instagram_followers_normalized)
+```
+
+
+```{r}
+# Merge normalized_actor_score for First Actor
+data_final_6 <- data_final_6 %>%
+  left_join(results_instagram_1, by = c("FirstActor_imdb" = "name")) %>%
+  rename(FirstActor_followers = Instagram_followers_normalized)
+
+# Merge normalized_actor_score for Second Actor
+data_final_6 <- data_final_6 %>%
+  left_join(results_instagram_1, by = c("SecondActor_imdb" = "name")) %>%
+  rename(SecondActor_followers = Instagram_followers_normalized)
+```
+
+```{r}
+write.csv(data_final_6, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Final Part 4/data_final_8.csv", row.names = FALSE)
+
+```
