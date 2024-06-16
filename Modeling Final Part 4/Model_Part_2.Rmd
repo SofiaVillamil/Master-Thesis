@@ -13,7 +13,7 @@ rm(list = ls())
 
 #### Library
 
-```{r message=False}
+```{r}
 library(dplyr)
 library(readr)
 library(car)
@@ -29,10 +29,11 @@ library(Boruta)
 library(extrafont)
 #font_import()
 #loadfonts(device = "win")
+library(stargazer)
 
 ```
 
-```{r message=False}
+```{r}
 data_final_8 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Final Part 4/data_final_7.csv")
 ```
 
@@ -82,8 +83,7 @@ selected_data <- data_final_8 %>%
     duration_normalized, release_year, release_month, release_day, 
     movie_age, is_weekend, seasonFall, seasonSpring, seasonSummer, 
     seasonWinter, movie_score, FirstActor_score, 
-    SecondActor_score, overall_sentiment_score, overall_sentiment_class, 
-    view_count_normalized, FirstActor_followers, SecondActor_followers
+    SecondActor_score, overall_sentiment_score, overall_sentiment_class
   )
 ```
 
@@ -134,13 +134,6 @@ selected_data <- selected_data %>%
 
 ### Final Data Set
 
-This will be done later.
-
-```{r}
-final_data <- selected_data %>%
-  select(-view_count_normalized, -FirstActor_followers, -SecondActor_followers)
-```
-
 ```{r}
 variable_classes <- sapply(final_data, class)
 ```
@@ -151,7 +144,6 @@ We will use the methodology used by Rhee and Zulkernine (2016) for calculating p
 
 ```{r}
 final_data$Profit <- final_data$world_wide_gross * 0.5 - final_data$Budget
-
 ```
 
 ```{r}
@@ -307,7 +299,6 @@ Train Control for Cross Validation using parallel processing
 set.seed(123)
 
 cl <- makeCluster(detectCores() - 1)
-on.exit(stopCluster(cl))
 registerDoParallel(cl)
 
 ctrl <- trainControl(method = "repeatedcv", 
@@ -487,7 +478,6 @@ Train control for hyper parameter tuning
 set.seed(123)
 
 cl <- makeCluster(detectCores() - 1)
-on.exit(stopCluster(cl))
 registerDoParallel(cl)
 
 ctrl_tune <- trainControl(method = "repeatedcv", 
@@ -569,7 +559,6 @@ print(results_selected)
 set.seed(123)
 
 cl <- makeCluster(detectCores() - 1)
-on.exit(stopCluster(cl))
 registerDoParallel(cl)
 
 ctrl_tune <- trainControl(method = "repeatedcv", 
@@ -762,6 +751,23 @@ cat("Mean Absolute Error (MAE):", mae_ann, "\n")
 cat("R-squared (R2):", r2_ann, "\n")
 ```
 The ensemble model show the most promise.It has the lowest MSE, RMSE, and MAE, and the highest R-squared value, indicating that it performs better than both the SVM and ANN models in terms of prediction accuracy and explained variance.
+
+```{r}
+model_performance <- data.frame(
+  Model = c("SVM", "ANN", "Ensemble"),
+  MSE = c(0.003591617, 0.003867303, 0.003252143),
+  RMSE = c(0.0599301, 0.06218764, 0.05702757),
+  MAE = c(0.0299501, 0.02826661, 0.02713093),
+  R2 = c(0.1198691, 0.05231185, 0.2030576)
+)
+
+# Create the summary table
+stargazer(model_performance, type = "text",
+          summary = FALSE,
+          title = "Model Performance Summary",
+          digits = 6,
+          font.size = "small")
+```
 
 
 
