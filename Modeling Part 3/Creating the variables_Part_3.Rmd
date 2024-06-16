@@ -47,5 +47,5 @@ write.xlsx(nombres, "C:/Users/sofia/Documents/Documentos/Master Computational So
 
 ```
 
-We will now do the Instagram Script and the Youtube Script. They are python scripts called "Instagram Test_Part_4" and "YoutubeScrapping_Part_5". And then we continue with the final Folder called Modeling Final Part 4
+We will now do the Instagram Script and the Youtube Script. They are python scripts called "Instagram_Part_4" and "Youtube_Part_5". And then we continue with the final Folder called Modeling Final Part 4
 
