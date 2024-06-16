@@ -13,7 +13,7 @@ rm(list = ls())
 
 #### Library
 
-```{r}
+```{r setup, include=FALSE}
 library(dplyr)
 library(readr)
 library(car)
@@ -33,7 +33,7 @@ library(stargazer)
 
 ```
 
-```{r}
+```{r setup, include=FALSE}
 data_final_8 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Final Part 4/data_final_7.csv")
 ```
 
@@ -147,9 +147,8 @@ final_data$Profit <- final_data$world_wide_gross * 0.5 - final_data$Budget
 ```
 
 ```{r}
-# Normalize the movie_age variable
 final_data$Profit <- as.numeric(final_data$Profit)
-final_data$Profit <- normalize(final_data$Profit)
+final_data$Profit <- normalize(final_data$Profit) # normalizing profit
 ```
 
 ```{r}
@@ -186,20 +185,19 @@ correlation_value <- cor(data$duration_normalized, data$seasonFall, use="complet
 The problem is between this two variables.
 
 ```{r}
-# Compute the correlation matrix without "duration_normalized"
+# correlation matrix without "duration_normalized"
 cor_matrix_without_duration <- cor(data[, !names(data) %in% "duration_normalized"], use="complete.obs")
 
 ```
 
 ```{r}
-# Compute the correlation matrix without "SeasonFall"
-
+# correlation matrix without "SeasonFall"
 cor_matrix_without_fall <- cor(data[, !names(data) %in% "seasonFall"], use="complete.obs")
 
 ```
 
 ```{r}
-data <-data %>%
+data <- data %>%
   select(- seasonFall)
 ```
 
@@ -750,24 +748,9 @@ cat("Root Mean Squared Error (RMSE):", rmse_ann, "\n")
 cat("Mean Absolute Error (MAE):", mae_ann, "\n")
 cat("R-squared (R2):", r2_ann, "\n")
 ```
+
 The ensemble model show the most promise.It has the lowest MSE, RMSE, and MAE, and the highest R-squared value, indicating that it performs better than both the SVM and ANN models in terms of prediction accuracy and explained variance.
 
-```{r}
-model_performance <- data.frame(
-  Model = c("SVM", "ANN", "Ensemble"),
-  MSE = c(0.003591617, 0.003867303, 0.003252143),
-  RMSE = c(0.0599301, 0.06218764, 0.05702757),
-  MAE = c(0.0299501, 0.02826661, 0.02713093),
-  R2 = c(0.1198691, 0.05231185, 0.2030576)
-)
-
-# Create the summary table
-stargazer(model_performance, type = "text",
-          summary = FALSE,
-          title = "Model Performance Summary",
-          digits = 6,
-          font.size = "small")
-```
 
 
 
