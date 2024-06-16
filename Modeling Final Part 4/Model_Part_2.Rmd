@@ -128,7 +128,7 @@ selected_data <- selected_data %>%
 There are only 4 observations for this variables in the final data set so we are going to eliminate it.
 
 ```{r}
-selected_data <- selected_data %>%
+final_data <- selected_data %>%
   select(-lead_is_woman)
 ```
 
@@ -527,10 +527,8 @@ print(summary(tuned_model_with_feature_selection))
 Visualizing the results
 ```{r}
 print(tuned_model_with_feature_selection$results)
-plot(tuned_model_with_feature_selection$results)
 
 print(tuned_model_with_feature_selection$resample)
-plot(tuned_model_with_feature_selection$resample)
 
 ```
 
@@ -627,7 +625,7 @@ ggplot(top_var_imp_selected_df, aes(x = reorder(Variable, Overall), y = Overall,
                      y = 0, 
                      yend = Overall)) +
     coord_flip() +
-    labs(title = "Top 15 most important variables for SVM model",
+    labs(title = "Top 15 most important variables",
          x = NULL,
          y = "Importance") +
     scale_color_gradient(low = "#7fcdbb", high = "#253494", guide = "none") +
@@ -751,6 +749,15 @@ cat("R-squared (R2):", r2_ann, "\n")
 
 The ensemble model show the most promise.It has the lowest MSE, RMSE, and MAE, and the highest R-squared value, indicating that it performs better than both the SVM and ANN models in terms of prediction accuracy and explained variance.
 
+```{r}
+# Plot observed vs. predicted for the ensemble model
+test_set$ensemble_predictions <- ensemble_predictions
+ggplot(test_set, aes(x = ensemble_predictions, y = Profit)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour = "blue") +
+  labs(title = "Ensemble Model Observed vs Predicted", x = "Predicted", y = "Observed") +
+  theme_minimal()
+```
 
 
 
