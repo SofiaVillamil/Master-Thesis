@@ -1,5 +1,5 @@
 ---
-title: "Scrapping for Budget"
+title: "Scrapping for Budget using The Numbers"
 author: "Sofia Villamil"
 date: "2024-06-10"
 output: html_document
@@ -7,14 +7,10 @@ output: html_document
 
 ### SCRAPPING THE NUMBERS
 
-We need to get the budget to have a specific determination of if a movie was successful or not. This is why we are going to scrap the budget information for the Numbers (Link: <https://www.the-numbers.com/>).
+We need to get the budget to have a clear variable able to indentify if a movie was successful or not. This is why we are going to scrap the budget information for the Numbers (Link: <https://www.the-numbers.com/>).
 
 ```{r}
 rm(list = ls())
-```
-
-```{r}
-set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here
 ```
 
 #### Library
@@ -28,6 +24,10 @@ library(httr)
 library(dplyr)
 library(foreach)
 library(doParallel)
+```
+
+```{r}
+set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here
 ```
 
 ```{r}
@@ -56,6 +56,8 @@ na_titles <- na_titles[1:10,]
 ```
 
 #### Scrapping Functions
+
+There are three specific variations in the URLs structure that I will take into account.
 
 ```{r}
 # Function to create the URL with release year in brackets
