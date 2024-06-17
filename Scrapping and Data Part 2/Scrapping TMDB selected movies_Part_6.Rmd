@@ -213,4 +213,4 @@ for(i in 1:nrow(chunck)) {
 
 ```
 
-This is the last scrapping script of this file. Now we move on to the Modeling Part 3 file where we will start with the script "Creating the variables_Part_1"
+This is the last scrapping script of this folder. Now we move on to the Modeling Part 3 folder where we will start with the script "Creating the variables_Part_1"
