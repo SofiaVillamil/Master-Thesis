@@ -983,11 +983,6 @@ data <- data %>%
   select(- seasonSummer,-month_5,-month_8,-month_11,-month_12 )
 ```
 
-```{r}
-model <- lm(Profit ~ ., data = data)
-vif_values <- vif(model)
-print(vif_values)
-```
 
 ## Modeling
 
@@ -1052,6 +1047,7 @@ best_svm_model <- tuned_svm_model$bestTune
 print(best_svm_model)
 ```
 
+
 Variable Interpretation
 ```{r}
 var_imp_selected <- varImp(tuned_svm_model, scale = FALSE)
@@ -1062,6 +1058,24 @@ var_imp_selected_df <- var_imp_selected_df[order(-var_imp_selected_df$Overall), 
 
 top_var_imp_selected_df <- var_imp_selected_df[1:15, ]
 
+top_var_imp_selected_df <- top_var_imp_selected_df %>%
+  mutate(Variable = case_when(
+    Variable == "Genre_imdb.Animation" ~ "genre_animation",
+    Variable == "Genre_imdb.Crime" ~ "genre_crime",
+    Variable == "MPAA.General Audiences" ~ "MPAA_general_audiences",
+    Variable == "MPAA.Parents Strongly Cautioned" ~ "MPAA_parents_strongly_cautioned",
+    Variable == "movie_age_scaled" ~ "movie_age",
+    Variable == "view_count_normalized" ~ "view_count_trailer",
+    Variable == "duration_normalized" ~ "duration_movie",
+    Variable == "FirstActor_score" ~ "first_actor_star_power",
+    Variable == "overall_sentiment_score" ~ "overall_sentiment_reviews",
+    Variable == "normalized_director_score" ~ "director_star_power",
+  Variable == "movie_score" ~ "movie_rating",
+
+
+
+    TRUE ~ Variable
+  ))
 
 ggplot(top_var_imp_selected_df, aes(x = reorder(Variable, Overall), y = Overall, color = Overall, group = 1)) +
     geom_point(size = 3) +
