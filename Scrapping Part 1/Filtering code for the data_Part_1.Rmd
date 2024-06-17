@@ -1,11 +1,11 @@
 ---
-title: "Filter Movies 2012-2023"
+title: "Filtering Movies 2012-2023"
 author: "Sofia Villamil"
 date: "2024-05-31"
 output: html_document
 ---
 
-### Data Base
+## DATA BASE
 
 We are going to use as a base, a data set from Kaggel called "**Full TMDB Movies Dataset 2024 (1M Movies)"** (Link to the data: <https://www.kaggle.com/datasets/asaniczka/tmdb-movies-dataset-2023-930k-movies>). This data will be filtered for the year 2012-2023 and will be complemented with scrapping of different websites to get other variables.
 
@@ -32,6 +32,8 @@ filtered_movies <- movies_cleaned %>%
 write.csv(filtered_movies, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping Part 1/TMDB_movie_dataset_v11_1mill_filter.csv", row.names = FALSE)
 
 ```
+
+### Permit access
 
 Checking that I can scrap the data from this pages. Meaning I have permit to access and index every part of the site without any restrictions.
 
