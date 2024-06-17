@@ -7,7 +7,7 @@ output: html_document
 
 ### Generating Gender Variable
 
-We are going to create a gender variable for the analysis.
+We are going to create our first variables. This variable is related to the gender of the actors and directors. 
 
 ```{r}
 rm(list = ls())
@@ -62,7 +62,8 @@ female_actors <- unique(data$FirstActor_imdb[data$lead_is_woman == 1 | is.na(dat
 
 
 ```
-
+ 
+The names that were corrected.
 ```{r}
 # they were corrected using the chat so I double check just in case
 manual_corrections <- c(
@@ -396,7 +397,11 @@ manual_corrections <- c(
   "Kun Chen" = 0, "Sôsuke Ikematsu" = 0, "Petrônio Gontijo" = 0
 )
   
-# Applying the manual corrections gathered 
+```
+
+Applying the manual corrections
+
+```{r}
 for (name in names(manual_corrections)) {
     correct_gender <- manual_corrections[name]
     first_name <- unlist(strsplit(name, " "))[1]
@@ -407,8 +412,8 @@ for (name in names(manual_corrections)) {
 # After corrections
 data$director_is_woman <- sapply(data$Director_imdb, map_gender, gender_map = gender_map_directors)
 data$lead_is_woman <- sapply(data$FirstActor_imdb, map_gender, gender_map = gender_map_actors)
-
 ```
+
 
 ```{r}
 #write.csv(data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_2.csv", row.names = FALSE)
