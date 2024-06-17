@@ -48,4 +48,4 @@ paths_allowed("https://www.youtube.com/")
 paths_allowed("https://www.themoviedb.org/")
 ```
 
-We will now start scrapping the first page in the next script called "Scrapping final data Script_Part_2"
+We will now start scrapping the first page in the next script called "IMDb Script_Part_2"

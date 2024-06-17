@@ -1,5 +1,5 @@
 ---
-title: "Scrapping Script"
+title: "IMDb Script"
 author: "Sofia Villamil"
 date: "2024-03-03"
 output: html_document
@@ -7,7 +7,7 @@ output: html_document
 
 ### IMDB SCRAPPING
 
-We are going to start by scraping the IMDB data base (Link: <https://www.imdb.com>). We are using the Kaggel data base and filling the data set with more variables.
+We are going to start by scraping the IMDb data base (Link: <https://www.imdb.com>). We are using the Kaggel data base filtered and save in the previous script. The data will be filled with more variables.
 
 ```{r}
 rm(list = ls())
@@ -20,11 +20,11 @@ library(rvest)
 library(dplyr)
 library(readr)
 library(future.apply) # parallel processing
- 
+library(httr)
 ```
 
 ```{r}
-set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here
+set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # You need to set your user agent here
 ```
 
 ### Scrapping function
@@ -114,7 +114,7 @@ scrape_imdb <- function(imdb_id, index) {
   )
 }
  
-# 1 million movie data set from keggel that is already filtered 
+# 1 million movie data set from keggel that is already filtered form previous script
 movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping Part 1/TMDB_movie_dataset_v11_1mill_filter.csv", show_col_types = FALSE)
  
 movies <- movies %>%
@@ -122,13 +122,14 @@ movies <- movies %>%
   filter(year == min(year)) %>%
   ungroup()
 
-# Selecting the amount of movies to scrap in 8 hours
-test_movies <- head(movies, 55000) 
+# Selecting the amount of movies to scrap, however, set to 10.
+test_movies <- head(movies, 10) 
 
 # empty data frame to store results to make less errors
 scraped_data <- data.frame()
 
 # Use parallel processing for scraping because it takes to long so this will fasten the scrapping process
+
 plan(multisession, workers = 7) # Adjust the number of workers based on your CPU, I have 8 so I will use one less that the maximum
 
 # Scrape data for each movie in the test data set that we choose
@@ -154,4 +155,4 @@ final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
 
 ```
 
-We are now going to continue to the next script called "BoxMojo variables scrapping script_Part_3"
+We are now going to continue to the next script called "Box Mojo variables scrapping script_Part_3"
