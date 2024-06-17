@@ -50,7 +50,6 @@ data_filtered <- data_filtered[!is.na(data_filtered$"production_companies"), ]
 ```
 
 ```{r}
-# Define the columns to check for NA values
 columns_to_check_1 <- c("FeatureReview_imdb", 
                       "top_critic_review_1_rt", "top_critic_review_2_rt", 
                       "audience_review_1_rt", "audience_review_2_rt")
@@ -75,7 +74,7 @@ na_counts
 
 ```{r}
 # Filling one observation that was missing
-data_filtered_3[data_filtered_3$imdb_id == "tt6449410", "Genre_imdb"] <- "Comedy" # found it in rotten tomatoes as in imdb there was no info
+data_filtered_3[data_filtered_3$imdb_id == "tt6449410", "Genre_imdb"] <- "Comedy" # found it in rotten tomatoes as in IMDb there was no info
 ```
 
 ```{r}
@@ -84,6 +83,7 @@ data_filtered_3[data_filtered_3$imdb_id == "tt6449410", "Genre_imdb"] <- "Comedy
 na_condition <- is.na(data_filtered_3$FirstActor_imdb) & is.na(data_filtered_3$SecondActor_imdb)
 
 # Fill FirstActor_imdb and SecondActor_imdb with Director_imdb if both are NA
+
 data_filtered_3$FirstActor_imdb[na_condition] <- data_filtered_3$Director_imdb[na_condition]
 data_filtered_3$SecondActor_imdb[na_condition] <- data_filtered_3$Director_imdb[na_condition]
 
@@ -94,7 +94,7 @@ data_filtered_3$SecondActor_imdb[is.na(data_filtered_3$SecondActor_imdb)] <- "No
 
 ```{r}
 # Now for the MPAA, some are not rated.
-# Replace NA values with "Not Rated"
+# Replace NA values with "Not Rated".
 data_filtered_3$MPAA_imdb[is.na(data_filtered_3$MPAA_imdb)] <- "Not Rated"
 
 # Replace "Unrated" values with "Not Rated"
