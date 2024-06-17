@@ -39,7 +39,7 @@ na_count <- sum(is.na(data_final$Budget))
 na_count
 ```
 
-We have decided that the best course of action is to eliminate the rows with NA values in the Budget column. Due to establishing that the dependent variable will be based on the literature reviews and how the majority of the papers treat the dependent variable, we have made the decision that all the movies without a budget will not be considered. Considering our previous work on the success variable, which was created to have a sense of what could be considered a successful movie, it is essential to ensure the accuracy of our data. Ignoring the budget in our metric for the dependent variable could result in movies with negative profits being incorrectly classified as successes with what we could observed happen with that variable. 
+We have decided that the best course of action is to eliminate the rows with NA values in the Budget column. Due to establishing that the dependent variable will be based on the literature reviews and how the majority of the papers treat the dependent variable, we have made the decision that all the movies without a budget will not be considered. Considering our previous work on the success variable, which was created to have a sense of what could be considered a successful movie, it is essential to ensure the accuracy of our data. Ignoring the budget in our metric for the dependent variable could result in movies with negative profits being incorrectly classified as successes with what we could observed happen with that variable.
 
 ```{r}
 data_final<- data_final %>%
@@ -80,6 +80,7 @@ data_final <- data_final %>%
 ```
 
 The rest we eliminate.
+
 ```{r}
 data_final <- data_final %>%
   group_by(Genre_imdb) %>%
@@ -167,6 +168,7 @@ data_final <- data_final %>%
 data_final <- data_final %>%
   select(-original_language)
 ```
+
 There are to little observations for each language some even have none observations.
 
 ### Duration of the movie
@@ -294,7 +296,7 @@ selected_data2 <- data_final %>%
   select(title, Budget, world_wide_gross, success) %>%
   mutate(
     profit = world_wide_gross - Budget,
-    marketing = 0.5 * Budget, # it said it on the internet
+    marketing = 0.5 * Budget, # it said it on the literature
     new_budget = marketing + Budget,
     actual_prof = world_wide_gross - new_budget
   ) %>%
@@ -597,11 +599,9 @@ data_final$lead_is_woman <- ifelse(data_final$FirstActor_imdb %in% women_actors,
 data_final$lead_is_woman[is.na(data_final$FirstActor_imdb)] <- NA
 ```
 
-
 ```{r}
 #write.csv(data_final, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_6.csv")
 
 ```
-
 
 We will continue now with the variables for the actors in the next script called "Creating the variables_Part_2"
