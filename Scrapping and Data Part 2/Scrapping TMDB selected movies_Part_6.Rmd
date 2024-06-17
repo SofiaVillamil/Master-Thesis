@@ -37,9 +37,11 @@ set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537
 This is our data base with only the titles that have missing Budgets.
 
 ```{r}
-is_na <- data_final_4 %>% 
+is_na_t <- data_final_4 %>% 
   filter(is.na(Budget)) %>%
   select(title, imdb_id, Budget)
+
+is_na <- is_na_t[1:10, ]
 ```
 
 ### Getting the API Key
@@ -188,11 +190,11 @@ chunck$Budget <- results$Budget[match(chunck$MovieID, results$MovieID)]
 ```
 
 ```{r}
-data <- data_final_4 # so i dont affect previous code for the urls
+data <- data_final_4 # so i don't affect previous code for the URLs
 ```
 
 ```{r}
-# as we are doing it in chunck, it will be manually updated so it does not overwrite previous observations
+# as we are doing it in chunk, it will be manually updated so it does not overwrite previous observations
 for(i in 1:nrow(chunck)) {
   imdb_id <- chunck$imdb_id[i]
   budget_scraped <- chunck$Budget[i]
@@ -207,7 +209,7 @@ for(i in 1:nrow(chunck)) {
 
 ### Saving
 ```{r}
-#write.csv(merged_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv",row.names = FALSE)
+#write.csv(data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv",row.names = FALSE)
 
 ```
 
