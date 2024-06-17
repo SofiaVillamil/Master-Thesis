@@ -3,7 +3,7 @@
 
 This is the complete guide to learning how to follow the order of the scripts, read before starting.
 
-Important Note: The majority of the scripts require several days to gather all the data. Therefore, each data-scraping script will be configured to collect 10 observations to verify functionality without taking too long to display results. Additionally, all data sets, except for the first one (which is too large for GitHub), are saved in their respective folders in case you would like to check the complete data attained for each scraping process. Additionally, the scripts at the end have a text indicating what the next script will be.
+**Important Note:** The majority of the scripts require several days to gather all the data. Therefore, each data-scraping script will be configured to collect 10 observations to verify functionality without taking too long to display results. Additionally, all data sets, except for the first one (which is too large for GitHub), are saved in their respective folders in case you would like to check the complete data attained for each scraping process. Additionally, the scripts at the end have a text indicating what the next script will be.
 
 Okay! So let's start.
 
