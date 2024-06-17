@@ -91,7 +91,7 @@ data_final <- data_final %>%
 Creating the genre dummy for analysis, it will take the value one if the movie is a certain genre.
 
 ```{r}
-# Ensure Genre is a factor
+# ensuering Genre is a factor
 data_final <- data_final %>%
   mutate(Genre_imdb = factor(Genre_imdb))
 
@@ -197,12 +197,12 @@ data_final <- data_final %>%
          release_month = month(release_date),
          release_day = day(release_date))
 
-# Calculate the age of the movie
+# calculating the age of the movie
 current_year <- year(Sys.Date())
 data_final <- data_final %>%
   mutate(movie_age = current_year - release_year)
 
-# Create a feature to determine if the release date is a weekend
+# creating a feature to determine if the release date is a weekend
 data_final <- data_final %>%
   mutate(is_weekend = if_else(wday(release_date) %in% c(1, 7), 1, 0))
 
@@ -276,22 +276,22 @@ print(summary_stats)
 ```
 
 ```{r}
-# Calculate the 90th and 95th percentile as potential thresholds for success
+# calculating the 90th and 95th percentile as potential thresholds for success
 threshold_90 <- quantile(data_final$world_wide_gross, 0.90, na.rm = TRUE)
 
 print(threshold_90)
 
-# Choose the 90th percentile as the success threshold for this example
+# choosing the 90th percentile as the success threshold for this example
 success_threshold <- threshold_90
 
-# Create binary target variable for success
+# creating binary target variable for success
 data_final <- data_final %>%
   mutate(success = if_else(world_wide_gross >= success_threshold, 1, 0))
 
 ```
 
 ```{r}
-# Select relevant columns and create new ones
+# Select relevant columns and creating new ones
 selected_data2 <- data_final %>%
   select(title, Budget, world_wide_gross, success) %>%
   mutate(
@@ -466,18 +466,18 @@ data_final <- data_final %>%
 ```
 
 ```{r}
-# Calculate the award score for each director based on their awards and nominations history in my data set
+# calculating the award score for each director based on their awards and nominations history in my data set
 data_final <- data_final %>%
   rowwise() %>%
   mutate(award_score = ifelse(Oscar_Information_imdb %in% names(award_weights), award_weights[Oscar_Information_imdb], 0)) %>%
   ungroup()
 
-# Calculate the number of movies each director has directed in the data set
+# calculating the number of movies each director has directed in the data set
 director_movie_count <- data_final %>%
   group_by(Director_imdb) %>%
   summarise(movie_count = n())
 
-# Calculate the total award score for each director in the data set
+# calculating the total award score for each director in the data set
 director_award_score <- data_final %>%
   group_by(Director_imdb) %>%
   summarise(total_award_score = sum(award_score))
