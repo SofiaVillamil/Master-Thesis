@@ -1,5 +1,5 @@
 ---
-title: "Script Rotten Tomatoes variables"
+title: "Script Rotten Tomatoes"
 author: "Sofia Villamil"
 date: "2024-06-01"
 output: html_document
@@ -11,12 +11,6 @@ We are going to scrap Rotten Tomatoes to get other variables (Link: <https://www
 
 ```{r}
 rm(list = ls())
-```
-
-We are going to use different user agents at random in order to not compromise the web page and the scrapping
-
-```{r}
-set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here
 ```
 
 ### Libraries
@@ -31,6 +25,10 @@ library(future.apply) # parallel processing
 ```
 
 ```{r}
+set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here
+```
+
+```{r}
 data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_with_bm_cleaned.csv",show_col_types = FALSE)
 
 colnames(data)[7] <- "release_year"
@@ -39,6 +37,8 @@ data <- data %>% filter(!(is.na(GrossWorldwide_imdb) & is.na(WorldwideGross_bm))
 ```
 
 ### URL function to take into account all the different possibilities in the links
+
+The links of this page do not have a clear structure, this is why the code is created to take into account all the variables and find the correct link for each movie.
 
 ```{r}
 # Helper function to safely extract single text elements
@@ -79,7 +79,7 @@ generate_movie_url <- function(movie_title, release_year = NULL, known_variation
   if (is_url_valid(base_url)) {
     return(base_url)
   }
-  years <- 2010:2024
+  years <- 2010:2024 # taking the year as some movies have the year in the URL's
   possible_urls <- paste0(base_url, "_", years)
   valid_urls <- possible_urls[sapply(possible_urls, is_url_valid)]
   if (length(valid_urls) > 0) {
@@ -93,7 +93,6 @@ generate_movie_url <- function(movie_title, release_year = NULL, known_variation
 ### Scrapping function
 
 ```{r}
-# Scrapping function
 scrape_rotten_tomatoes <- function(title, release_year = NULL, known_variation = NULL) {
   cat(sprintf("Scraping Rotten data for movie title: %s\n", title))
   movie_url <- generate_movie_url(title, release_year, known_variation)
@@ -112,7 +111,7 @@ scrape_rotten_tomatoes <- function(title, release_year = NULL, known_variation =
     ))
   }
 
-  Sys.sleep(runif(1, min = 5, max = 10))  # Random sleep between 5 and 10 seconds
+  Sys.sleep(runif(1, min = 5, max = 10))  
   cat(sprintf("Trying URL: %s\n", movie_url))
   movie_page <- tryCatch({
     read_html(httr::GET(movie_url))
@@ -198,7 +197,7 @@ scrape_rotten_tomatoes <- function(title, release_year = NULL, known_variation =
 ```
 
 ```{r}
-# Known variations for specific movies
+# Known variations for specific movies that need to be taken into account.
 known_variations <- list(
   "The Avengers" = "marvels_the_avengers",
   "Star Wars: The Force Awakens" = "star_wars_episode_vii_the_force_awakens",
@@ -221,19 +220,18 @@ known_variations <- list(
 ."="your_name_2017"
 )
 
-# Create a reversion map to revert known variations to their original titles
+# Create a reversion map to revert known variations to their original titles, to have the same title always
 reversion_map <- c(
   "Marvel's the Avengers" = "The Avengers",
   "The Hunger Games: Mockingjay, Part 1
 "="The Hunger Games: Mockingjay - Part 1"
 )
 
-# Example data set to try small number of movies like 2000 and go running it un this chunks of 2000 util you get to 15576. I did it all in but take too long!
-
+# Set the amount of title we wanna get
 test_movies <- data[1:10,]
 
-# Use parallel processing for scraping
-plan(multisession, workers = 7) # Adjust the number of workers based on your CPU, I have 8 so I put one less
+# parallel processing for scraping
+plan(multisession, workers = 7) 
 
 # Scrape data for each movie in the data set using parallel processing
 scraped_data_list <- future_lapply(seq_len(nrow(test_movies)), function(i) {
