@@ -6,7 +6,7 @@ output: html_document
 ---
  ## Support Vector Machine Model
  
-This will be the variables we are going to add to our model.
+This will be the variables we are going to add to our model.We are going to repeat the process again
 
 -   View Count in Trailer: Numeric normalized variable created with the number of view the trailer for each movie has on Youtube.
 
@@ -22,7 +22,22 @@ rm(list = ls())
 ```{r}
 library(readr)
 library(e1071)
-
+library(readxl)
+library(dplyr)
+library(lubridate)
+library(stringr)
+library(tidyr)
+library(doParallel)
+library(future)
+library(sentimentr)
+library(future.apply)
+library(purrr)
+library(ggplot2)
+library(extrafont)
+#font_import()
+#loadfonts(device = "win")
+library(pdp)
+library(ggplot2)
 ```
 
 ### Creating the variables for this small data set
@@ -35,6 +50,8 @@ data_final_5 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computation
 ```{r}
 results_youtube_1 <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/Youtube and Instagram Data/results_youtube_1.csv", 
     delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
+results_youtube_1 <- results_youtube_1[, -3]
+
 ```
 
 ```{r}
@@ -54,25 +71,20 @@ convert_view_count <- function(view_count) {
 # Apply the conversion function
 results_youtube_1$view_count <- sapply(results_youtube_1$view_count, convert_view_count)
 
-# Function to convert scientific notation to fixed notation
-convert_to_fixed <- function(x) {
-  return(format(x, scientific = FALSE))
-}
-
-# to observe the results better
-results_youtube_1$view_count_fixed <- sapply(results_youtube_1$view_count, convert_to_fixed)
 ```
 
 ```{r}
-# Function to normalize data
+# Ensure the view_count column is numeric
+results_youtube_1$view_count <- as.numeric(results_youtube_1$view_count)
+
+# Function to normalize data using Min-Max normalization
 normalize_min_max <- function(x) {
-  return((x - min(x)) / (max(x) - min(x)))
+  return((x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
 }
 
+# Apply normalization to the view_count column
 results_youtube_1$view_count_normalized <- normalize_min_max(results_youtube_1$view_count)
 
-# to observe the results better
-results_youtube_1$view_count_normalized_fixed <- sapply(results_youtube_1$view_count_normalized, convert_to_fixed)
 ```
 
 ```{r}
@@ -80,9 +92,11 @@ data_final_5 <- merge(data_final_5, results_youtube_1, by = "title", all.x = TRU
 ```
 
 ### Instagram Variable
+
 ```{r}
 results_instagram_1 <- read_excel("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/Youtube and Instagram Data/results_instagram_1.xlsx")
 results_instagram_1$Instagram_followers <-results_instagram_1$`Instagram Followers`
+results_instagram_1 <- results_instagram_1[, -2]
 
 ```
 
@@ -105,11 +119,11 @@ results_instagram_1$Instagram_followers <- sapply(results_instagram_1$Instagram_
 
 results_instagram_1$Instagram_followers[is.na(results_instagram_1$Instagram_followers)] <- 0
 
-```
 
-```{r}
-results_instagram_1 <- results_instagram_1 %>% 
-  select(name, Instagram_followers)
+# Filter out rows with less than 10,000 followers because they are fan pages.
+
+results_instagram_1$Instagram_followers[results_instagram_1$Instagram_followers < 10000] <- 0
+
 ```
 
 
@@ -126,10 +140,6 @@ data_final_5 <- data_final_5 %>%
 ```
 
 
-```{r}
-data_final_5
-```
-
 ## Other variables
 ```{r}
 na_count <- sum(is.na(data_final_5$FirstActor_followers))
@@ -145,74 +155,55 @@ na_count
 ```{r}
 data_final_5 <- data_final_5 %>%
   filter(!is.na(SecondActor_followers))
+
+data_final_5 <- data_final_5 %>%
+  filter(!is.na(FirstActor_followers))
+
+data_final_5 <- data_final_5 %>%
+  filter(!is.na(view_count))
+
+```
+
+```{r}
+data_final_5 <- data_final_5 %>%
+  filter(!is.na(Budget))
 ```
 
 ### Genre
 
 ```{r}
-unique_genres <- data_final %>%
+unique_genres <- data_final_5 %>%
   group_by(Genre_imdb) %>%
   summarise(count = n()) %>%
   ungroup()
-```
-
-Checked individually the most unique genres and look into the titles
-
-```{r}
-unique_genres2 <- data_final %>%
-  select(title, Genre_imdb) %>%
-  filter(Genre_imdb == "Sci-Fi")
-```
-
-We are going to reduce the types of genre to the main one by using Rotten Tomatoes genres also
-
-```{r}
-# Update the genre for the movie
-data_final <- data_final %>%
-  mutate(Genre_imdb = case_when(
-    title == "The Boy Next Door" ~ "Mystery",
-    title == "The Bar" ~ "Mystery",
-    title == "97 Minutes" ~ "Mystery",
-    title == "A Christmas Star" ~ "Adventure",
-    title == "App" ~ "Mystery",
-    TRUE ~ Genre_imdb
-  ))
-
-```
-
-The rest we eliminate.
-```{r}
-data_final <- data_final %>%
-  group_by(Genre_imdb) %>%
-  filter(n() > 1) %>%
-  ungroup()
+unique_genres
 ```
 
 Creating the genre dummy for analysis, it will take the value one if the movie is a certain genre.
 
 ```{r}
 # Ensure Genre is a factor
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(Genre_imdb = factor(Genre_imdb))
 
 # crating the dummy variables
-dummy <- dummyVars(" ~ Genre_imdb", data = data_final)
-data_final_encoded <- as.data.frame(predict(dummy, newdata = data_final))
+dummy <- dummyVars(" ~ Genre_imdb", data = data_final_5)
+data_final_encoded <- as.data.frame(predict(dummy, newdata = data_final_5))
 
 ```
 
 ```{r}
 # combining the columns
-data_final <- bind_cols(data_final, data_final_encoded)
+data_final_5 <- bind_cols(data_final_5, data_final_encoded)
 
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   select(-Genre_imdb)
 ```
 
 ### MPAA
 
 ```{r}
-unique_MPAA <- data_final %>%
+unique_MPAA <- data_final_5 %>%
   group_by(MPAA_imdb) %>%
   summarise(count = n()) %>%
   ungroup()
@@ -236,36 +227,29 @@ standardize_rating <- function(rating) {
 }
 
 # Apply the function to standardize ratings
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(MPAA = standardize_rating(MPAA_imdb))
 
 # transforming it as a factor
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(MPAA = factor(MPAA))
-
-# Check if there are categories that are "Unknown"
-unknown_values <- data_final %>%
-  filter(MPAA == "Unknown") %>%
-  select(MPAA_imdb) %>%
-  distinct() 
-# there are no unknown values!
 ```
 
 ```{r}
 # Creating the dummy variable
-dummy_mpaa <- dummyVars(" ~ MPAA", data = data_final)
-data_final_encoded_mpaa <- as.data.frame(predict(dummy_mpaa, newdata = data_final))
+dummy_mpaa <- dummyVars(" ~ MPAA", data = data_final_5)
+data_final_encoded_mpaa <- as.data.frame(predict(dummy_mpaa, newdata = data_final_5))
 
-data_final <- bind_cols(data_final, data_final_encoded_mpaa)
+data_final_5 <- bind_cols(data_final_5, data_final_encoded_mpaa)
 
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   select(-MPAA_imdb, -MPAA)
 ```
 
 ### Original Language
 
 ```{r}
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   select(-original_language)
 ```
 There are to little observations for each language some even have none observations.
@@ -274,35 +258,35 @@ There are to little observations for each language some even have none observati
 
 ```{r}
 # Normalize the duration variable between 0 and 1
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(duration_normalized = (Duration_mov_imdb- min(Duration_mov_imdb)) / (max(Duration_mov_imdb) - min(Duration_mov_imdb)))
 
-summary(data_final$duration_normalized)
-data_final <- data_final %>%
+summary(data_final_5$duration_normalized)
+data_final_5 <- data_final_5 %>%
   select(-Duration_mov_imdb)
 ```
 
 ### Release Date
 
 ```{r}
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(release_date = dmy(release_date))
 ```
 
 ```{r}
 # Extract year, month, and day
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(release_year = year(release_date),
          release_month = month(release_date),
          release_day = day(release_date))
 
 # Calculate the age of the movie
 current_year <- year(Sys.Date())
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(movie_age = current_year - release_year)
 
 # Create a feature to determine if the release date is a weekend
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(is_weekend = if_else(wday(release_date) %in% c(1, 7), 1, 0))
 
 ```
@@ -310,7 +294,7 @@ data_final <- data_final %>%
 Season
 
 ```{r}
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(season = case_when(
     month(release_date) %in% c(12, 1, 2) ~ "Winter",
     month(release_date) %in% c(3, 4, 5) ~ "Spring",
@@ -322,30 +306,22 @@ data_final <- data_final %>%
 
 ```{r}
 # Creating a dummy variable
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(season_ = factor(season))
 
-dummy_season <- dummyVars(" ~ season", data = data_final)
-data_final_encoded_season <- as.data.frame(predict(dummy_season, newdata = data_final))
+dummy_season <- dummyVars(" ~ season", data = data_final_5)
+data_final_encoded_season <- as.data.frame(predict(dummy_season, newdata = data_final_5))
 
-data_final <- bind_cols(data_final, data_final_encoded_season)
+data_final_5 <- bind_cols(data_final_5, data_final_encoded_season)
 
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   select(-release_date, -season_)
 ```
 
 ### Production Companies
 
-There are a lot of production companies that appear 1 time in the data set. This is not going to bring little to no insight into the analysis as we do not have enough observations for each so I have decided to eliminate it.
-
 ```{r}
-unique_prod <- data_final %>%
-  group_by(production_companies) %>%
-  summarise(count = n()) %>%
-  ungroup()
-unique_prod
-
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   select(-production_companies)
 ```
 
@@ -355,16 +331,13 @@ We are going to create a combined score, using the three scores attained and the
 
 ```{r}
 # First we normalize IMDb scores to a 0-100 scale equal to the rt one.
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(imdb_score_normalized = IMDbscore_imdb * 10)
 ```
 
-I decided to do this instead of differentiating between the three because I want to concentrate the impact of this score in the revenue, not the impact that each has on the revenue of a movie.
-
-Now, I have some missing values but I dont want to loose information that the movies with this missing values is going to give me so we are going to create a mix approach to calculate the score.
 
 ```{r}
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   rowwise() %>%
   mutate(
     # cases with all scores
@@ -407,7 +380,7 @@ data_final <- data_final %>%
 ```
 
 ```{r}
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(
     min_combined_score = min(combined_score, na.rm = TRUE),
     max_combined_score = max(combined_score, na.rm = TRUE),
@@ -416,7 +389,7 @@ data_final <- data_final %>%
 ```
 
 ```{r}
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   select(-min_combined_score, -max_combined_score, -IMDbscore_imdb, -imdb_score_normalized,
          -weighted_sum_all, -total_reviews_all, -combined_score_all,
          -weighted_sum_no_audience, -total_reviews_no_audience, -combined_score_no_audience,
@@ -430,7 +403,7 @@ data_final <- data_final %>%
 Let's start with cleaning the variable for the Oscars.
 
 ```{r}
-oscar_summary <- data_final %>%
+oscar_summary <- data_final_5 %>%
   filter(Oscar_Information_imdb != 'Awards') %>%
   group_by(Oscar_Information_imdb) %>%
   summarise(count = n()) %>%
@@ -469,7 +442,7 @@ award_weights <- c(
 ```
 
 ```{r}
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(Oscar_Information_imdb = ifelse(Oscar_Information_imdb == "Awards", "No Major Awards", Oscar_Information_imdb))
 
 ```
@@ -479,7 +452,7 @@ Taking into account that I will also get the number of awards and nominations.
 Now we will clean the Awards and nomination variables
 
 ```{r}
-unique_awards_nominations <- data_final %>%
+unique_awards_nominations <- data_final_5 %>%
   select(AwardsAndNominations_imdb) %>%
   distinct() %>%
   arrange(AwardsAndNominations_imdb)
@@ -488,7 +461,7 @@ unique_awards_nominations <- data_final %>%
 Cleaning the column as the movies with no awards need to be cleaned to represent that.
 
 ```{r}
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(
     AwardsAndNominations_imdb = ifelse(str_detect(AwardsAndNominations_imdb, "win|wins|nomination|nominations"), 
                                        AwardsAndNominations_imdb, 
@@ -499,7 +472,7 @@ data_final <- data_final %>%
 
 ```{r}
 # Extract wins and nominations
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   mutate(
     wins = ifelse(AwardsAndNominations_imdb != "No Awards", 
                   as.numeric(str_extract(AwardsAndNominations_imdb, "\\d+(?=\\s+win|\\s+wins)")), 0),
@@ -512,23 +485,23 @@ data_final <- data_final %>%
 
 ```{r}
 # Calculate the award score for each director based on their awards and nominations history in my data set
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   rowwise() %>%
   mutate(award_score = ifelse(Oscar_Information_imdb %in% names(award_weights), award_weights[Oscar_Information_imdb], 0)) %>%
   ungroup()
 
 # Calculate the number of movies each director has directed in the data set
-director_movie_count <- data_final %>%
+director_movie_count <- data_final_5 %>%
   group_by(Director_imdb) %>%
   summarise(movie_count = n())
 
 # Calculate the total award score for each director in the data set
-director_award_score <- data_final %>%
+director_award_score <- data_final_5 %>%
   group_by(Director_imdb) %>%
   summarise(total_award_score = sum(award_score))
 
 # Aggregate wins and nominations for each director for movies in the data set
-director_awards_nominations <- data_final %>%
+director_awards_nominations <- data_final_5 %>%
   group_by(Director_imdb) %>%
   summarise(
     total_wins = sum(wins, na.rm = TRUE),
@@ -562,7 +535,7 @@ director_metrics <- director_metrics %>%
   select(-min_score, -max_score)
 
 
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   left_join(director_metrics, by = "Director_imdb")
 
 
@@ -573,103 +546,35 @@ columns_to_remove <- c("wins", "nominations", "award_score", "movie_count", "tot
                        "total_wins", "total_nominations", "normalized_wins", "normalized_nominations", 
                        "combined_director_score", "Oscar_Information_imdb", "AwardsAndNominations_imdb")
 
-data_final <- data_final %>%
+data_final_5 <- data_final_5 %>%
   select(-all_of(columns_to_remove))
 ```
 
-### Gender
-
-Let's fix the gender variable and complete the Na's.
-
-```{r}
-directors_with_missing_gender <- data_final %>%
-  filter(is.na(director_is_woman)) %>%
-  select(Director_imdb) %>%
-  distinct()
-
-print(directors_with_missing_gender)
-```
-
-```{r}
-# List of women directors 
-women_directors <- c(
-  "Gaysorn Thavat", "Anca Miruna Lazarescu", "Armagan Ballantyne", "Soudade Kaadan",
-  "Vesela Kazakova", "Luàna Bajrami", "Neus Ballús", "Erige Sehiri", "Amélie van Elmbt",
-  "Kiruthiga Udhayanidhi", "Gunhild Magnor", "Kurdwin Ayub", "Manane Rodríguez",
-  "Senem Tüzen", "Coky Giedroyc", "Kestrin Pantera", "Cláudia Varejão", "Heiward Mak",
-  "Oeke Hoogendijk", "Valérie Massadian", "Feihong Chen", "Lucía Garibaldi", 
-  "Anne-Lise Koehler", "Hnin Ei Hlaing", "Ramata-Toulaye Sy", "Ángeles Cruz",
-  "Tizza Covi", "Becs Arahanga", "Aitch Alberto", "Naziha Arebi", "Eun-Jeong Yu",
-  "Tanwarin Sukkhapisit"
-)
-
-data_final$director_is_woman <- ifelse(data_final$Director_imdb %in% women_directors, 1, 0)
-
-data_final$director_is_woman[is.na(data_final$Director_imdb)] <- NA
-```
-
-Now for the Lead is a Woman
-
-```{r}
-actor_with_missing_gender <- data_final %>%
-  filter(is.na(lead_is_woman)) %>%
-  select(FirstActor_imdb) %>%
-  distinct()
-
-print(actor_with_missing_gender)
-```
-
-```{r}
-women_actors <- c(
-  "Chia-Yen Ko", "Elín Hall", "LisaGay Hamilton", "Gwei Lun-Mei", "Karelle Tremblay",
-  "Thitiya Jirapornsilp", "Nuria Giménez", "Algi Eke", "Huifang Duan", "Jyotika",
-  "Fala Chen", "Ladya Cheryl", "Gong Linna", "Kinuko Tanida", "Luàna Bajrami",
-  "Bipasha Basu", "Yile Yara Vianello", "Jowita Budnik", "Moa Stefansdotter",
-  "Ameni Fdhili", "Iride Mockert", "Dextina Booker", "Mbong Amata", "Suhaee Abro",
-  "Amber Fares", "Delfine Bafort", "Chuan-Ying Chuang", "Youssra", "Mbissine Thérèse Diop",
-  "María Fux", "Kristii Schneider", "Gerlinde Kaltenbrunner", "Lola Arias",
-  "Hong-Anh", "Awatea Mita", "Jill Li", "Thishiwe Ziqubu", "Musetta Vander",
-  "Preity G Zinta", "Hennika Huuse", "Freny Bhagat", "Yunjin Cao", "Shehr Ali",
-  "Angdu Padma", "Woseser Tsering", "Tanaquil Le Clerq", "Fine Sendel", "Mãlina Manovici",
-  "Parineeti Chopra", "Ha Le Diem", "Hnin Ei Hlaing", "Anaita Wali Zada",
-  "Trien de Haan-Zwagerman", "Paca Molera Pereira", "Dada Chan", "Ro Mereani Adi Tuimatanisiga",
-  "Whirimako Black", "Mía Maestro", "Shamira Raphaela", "Inês Sá Frias",
-  "Gcina Mhlophe", "Crystal-Donna Roberts", "Meezaan Jafri", "Anzhelika Hakobyan",
-  "Basê Dogan", "Hyomin", "Cindy Jansen", "Nisrine Amine", "Kovai Sarala",
-  "Rhae-Kye Waites", "Magdaléna Borová"
-)
-
-data_final$lead_is_woman <- ifelse(data_final$FirstActor_imdb %in% women_actors, 1, 0)
-
-data_final$lead_is_woman[is.na(data_final$FirstActor_imdb)] <- NA
-```
-
-
-Libraries
-
-```{r message=FALSE}
-library(sentimentr) # for the sentiment analysis
-library(readr)
-library(dplyr)
-library(tidyverse)
-library(stringr)
-library(parallel)
-library(future.apply)
-library(scales)
-library(readxl)
-
-```
-
-```{r message=FALSE}
-data_final_6 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_6.csv",show_col_types = FALSE)
-data_final_6 <- data_final_6[, -1]
-```
 
 ### Actor
 
 ```{r message=FALSE}
 actors_info <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/actors_with_imdb.csv", 
     delim = ",", escape_double = FALSE, trim_ws = TRUE)
+```
+
+```{r}
+# Merge Instagram followers for First Actor
+actors_info <- actors_info %>%
+  left_join(data_final_5 %>% select(FirstActor_imdb, FirstActor_followers) %>% rename(Instagram_followers = FirstActor_followers), 
+            by = c("name" = "FirstActor_imdb"))
+
+# Merge Instagram followers for Second Actor
+actors_info <- actors_info %>%
+  left_join(data_final_5 %>% select(SecondActor_imdb, SecondActor_followers) %>% rename(Instagram_followers = SecondActor_followers), 
+            by = c("name" = "SecondActor_imdb"))
+
+# Combine the Instagram followers columns
+actors_info <- actors_info %>%
+  mutate(
+    Instagram_followers = coalesce(Instagram_followers.x, Instagram_followers.y)
+  ) %>%
+  select(-Instagram_followers.x, -Instagram_followers.y)
 ```
 
 Let's start with cleaning the variable for the Oscars.
@@ -782,7 +687,7 @@ na_actors <- actors_info %>%
   pull(name)
 
 # Count their appearances in data_final to fill this Na's with that
-actor_appearances <- data_final_6 %>%
+actor_appearances <- data_final_5 %>%
   mutate(
     FirstActor_imdb = ifelse(FirstActor_imdb %in% na_actors, FirstActor_imdb, NA),
     SecondActor_imdb = ifelse(SecondActor_imdb %in% na_actors, SecondActor_imdb, NA)
@@ -791,7 +696,6 @@ actor_appearances <- data_final_6 %>%
   group_by(value) %>%
   summarize(appearances = n())
 
-print(actor_appearances) # lets see the number of movies they appear in
 ```
 
 So they each appear 1 time in our data set and in IMDb they also have only 1 previous movie so we are going to set the Na's to 1.
@@ -801,21 +705,24 @@ actors_info <- actors_info %>%
   mutate(number_of_movies = replace_na(number_of_movies, 1))
 ```
 
-Following the same calculations we did with director
+Following the same calculations we did with director but adding instagram followers
 
 ```{r}
-# Calculate the award score for each actor based on their awards and nominations history
+actors_info <- actors_info %>%
+  filter(!is.na(Instagram_followers))
+
+```
+
+```{r}
 actors_info <- actors_info %>%
   rowwise() %>%
   mutate(award_score = ifelse(awards_and_nominations %in% names(award_weights), award_weights[awards_and_nominations], 0)) %>%
   ungroup()
 
-# Calculate the total award score for each actor in the data set
 actor_award_score <- actors_info %>%
   group_by(actor_id_imdb) %>%
   summarise(total_award_score = sum(award_score))
 
-# Aggregate wins and nominations for each actor for movies in the data set
 actor_awards_nominations <- actors_info %>%
   group_by(actor_id_imdb) %>%
   summarise(
@@ -823,68 +730,58 @@ actor_awards_nominations <- actors_info %>%
     total_nominations = sum(nominations, na.rm = TRUE)
   )
 
-# Combine the metrics
+# Combine the metrics with Instagram Followers now.
 actor_metrics <- actors_info %>%
-  select(actor_id_imdb, number_of_movies) %>% #we add the number of movies the actor has being in
+  select(actor_id_imdb, number_of_movies, Instagram_followers) %>% 
   distinct() %>%
   left_join(actor_award_score, by = "actor_id_imdb") %>%
   left_join(actor_awards_nominations, by = "actor_id_imdb")
 
-# Normalize wins and nominations
+
 actor_metrics <- actor_metrics %>%
   mutate(
     normalized_wins = total_wins / max(total_wins, na.rm = TRUE),
-    normalized_nominations = total_nominations / max(total_nominations, na.rm = TRUE)
-  )
+    normalized_nominations = total_nominations / max(total_nominations, na.rm = TRUE),
+    normalized_instagram_followers = Instagram_followers )
 
-# Calculate combined actor score
+# combined actor score
 actor_metrics <- actor_metrics %>%
   mutate(
-    combined_actor_score = number_of_movies + total_award_score + normalized_wins * 10 + normalized_nominations * 5
+    combined_actor_score = number_of_movies + total_award_score + normalized_wins * 10 + normalized_nominations * 5 + normalized_instagram_followers * 10
   )
-
-# Normalize the combined actor score
-actor_metrics <- actor_metrics %>%
-  mutate(
-    min_score = min(combined_actor_score, na.rm = TRUE),
-    max_score = max(combined_actor_score, na.rm = TRUE),
-    normalized_actor_score = (combined_actor_score - min_score) / (max_score - min_score)
-  ) %>%
-  select(-min_score, -max_score)
-
-# Merge the normalized actor score back into the original actors_info
-actors_info <- actors_info %>%
-  left_join(actor_metrics, by = "actor_id_imdb")
 
 ```
 
 ```{r}
-columns_to_remove <- c("wins", "nominations", "award_score", "number_of_movies.y","number_of_movies.x", "total_award_score", 
-                       "total_wins", "total_nominations", "normalized_wins", "normalized_nominations", 
-                       "combined_actor_score", "awards_and_nominations", "oscars_nominations")
-
-
 actors_info <- actors_info %>%
-  select(-all_of(columns_to_remove))
+  left_join(actor_metrics %>% select(actor_id_imdb, combined_actor_score), by = "actor_id_imdb")
 ```
-
-Let's now add the rating to the final data set
 
 ```{r}
 actors <- actors_info %>%
-  select(-c(imdb_id,actor_id_imdb))
+  select(actor_id_imdb, name, combined_actor_score)
 ```
 
 ```{r}
-# Merge normalized_actor_score for First Actor
-data_final_6 <- data_final_6 %>%
-  left_join(actors, by = c("FirstActor_imdb" = "name")) %>%
-  rename(FirstActor_score = normalized_actor_score)
+actors <- actors %>%
+  distinct(actor_id_imdb, .keep_all = TRUE)
 
-# Merge normalized_actor_score for Second Actor
-data_final_6 <- data_final_6 %>%
+```
+
+```{r}
+# Merge combined_actor_score for First Actor
+data_final_5 <- data_final_5 %>%
+  left_join(actors, by = c("FirstActor_imdb" = "name")) %>%
+  rename(FirstActor_score = combined_actor_score)
+
+# Merge combined_actor_score for Second Actor
+data_final_5 <- data_final_5 %>%
   left_join(actors, by = c("SecondActor_imdb" = "name")) %>%
-  rename(SecondActor_score = normalized_actor_score)
+  rename(SecondActor_score = combined_actor_score)
+```
+
+```{r}
+colnames(data_final_5)
 ```
 
 ### Sentiment Analysis of Reviews
@@ -904,7 +801,7 @@ Let´s start with the Reviews Variable.
 -   audience_review_2_rt
 
 ```{r}
-data <- data_final_6 %>%
+data <- data_final_5 %>%
   select(imdb_id, TitleReview_imdb, FeatureReview_imdb, top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt)
 
 ```
@@ -947,9 +844,6 @@ data <- data %>%
   mutate(overall_sentiment_score = mean(c_across(ends_with("_sentiment")), na.rm = TRUE)) %>%
   ungroup()
 
-# Classify the overall sentiment score to observe better the results
-data <- data %>%
-  mutate(overall_sentiment_class = map_chr(overall_sentiment_score, classify_sentiment))
 
 remove <- c("TitleReview_imdb", "FeatureReview_imdb", "top_critic_review_1_rt", "top_critic_review_2_rt", "audience_review_1_rt", "audience_review_2_rt")
 
@@ -961,8 +855,266 @@ data <- data %>%
 Merge everything and check
 
 ```{r}
-data_final_6 <- merge(data_final_6, data, by = "imdb_id", all.x = TRUE)
+data_final_5 <- merge(data_final_5, data, by = "imdb_id", all.x = TRUE)
 
-data_final_dd <- data_final_6 %>% select(title, overall_sentiment_class, overall_sentiment_score, TitleReview_imdb, FeatureReview_imdb, top_critic_review_1_rt, top_critic_review_2_rt, audience_review_1_rt, audience_review_2_rt)
 
 ```
+
+## Starting with the modeling
+
+```{r}
+selected_columns <- c(
+  "world_wide_gross",                
+  "Budget",                                    
+  "view_count_normalized",           
+  "Genre_imdb.Action",               
+  "Genre_imdb.Adventure",            
+  "Genre_imdb.Animation",            
+  "Genre_imdb.Biography",            
+  "Genre_imdb.Comedy",               
+  "Genre_imdb.Crime",                
+  "Genre_imdb.Drama",                
+  "Genre_imdb.Horror",               
+  "MPAA.General Audiences",          
+  "MPAA.Parental Guidance Suggested",
+  "MPAA.Parents Strongly Cautioned", 
+  "MPAA.Restricted",               
+  "duration_normalized",             
+  "release_month",                   
+  "movie_age",                       
+  "is_weekend",                      
+  "seasonFall",                      
+  "seasonSpring",                    
+  "seasonSummer",                    
+  "seasonWinter",                    
+  "movie_score",                     
+  "normalized_director_score",       
+  "FirstActor_score",                
+  "SecondActor_score",
+  "overall_sentiment_score"
+)
+
+# Selecting the specified columns
+data_final_5 <- data_final_5 %>%
+  select(all_of(selected_columns))
+```
+
+
+
+**Release Month**
+
+```{r}
+
+data_final_5 <- data_final_5 %>% mutate(release_month = as.factor(release_month))
+
+release_month_dummies <- model.matrix(~ release_month - 1, data = data_final_5)
+
+release_month_dummies <- as.data.frame(release_month_dummies)
+colnames(release_month_dummies) <- gsub("release_month", "month_", colnames(release_month_dummies))
+
+data_final_5 <- cbind(data_final_5, release_month_dummies)
+
+```
+
+**Release Year and Age Movie**
+
+We are going to standardize age and remove release year.
+
+```{r}
+# Normalization function
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+# Normalize the movie_age variable
+data_final_5$movie_age <- as.numeric(data_final_5$movie_age)
+data_final_5$movie_age_scaled <- normalize(data_final_5$movie_age)
+
+```
+
+```{r}
+data_final_5 <- data_final_5 %>%
+  select(-movie_age,-release_month)
+```
+
+#### Dependent Variable
+
+We will use the methodology used by Rhee and Zulkernine (2016) for calculating profit. Reference: Rhee, T. G., & Zulkernine, F. (2016, December). Predicting movie box office profitability: a neural network approach.
+
+```{r}
+data_final_5$Profit <- data_final_5$world_wide_gross * 0.5 - data_final_5$Budget
+```
+
+```{r}
+data_final_5$Profit <- as.numeric(data_final_5$Profit)
+data_final_5$Profit <- normalize(data_final_5$Profit) # normalizing profit
+```
+
+```{r}
+data_final_5 <- data_final_5 %>%
+  select(-Budget, -world_wide_gross)
+```
+
+```{r}
+data_final_5 <- na.omit(data_final_5)
+```
+
+#### Dummy Variables
+
+We are going to exclude one dummy variable from all our dummies to not fall into the dummy trap
+
+```{r}
+data <- data_final_5 %>%
+    select(-`MPAA.Parental Guidance Suggested`,-Genre_imdb.Action)
+```
+
+### Correlation
+
+```{r}
+cor_matrix <- cor(data)
+```
+
+```{r}
+fit <- lm(Profit ~ ., data = data)
+summary(fit)
+```
+```{r}
+data <- data %>%
+  select(- seasonSummer,-month_5,-month_8,-month_11,-month_12 )
+```
+
+```{r}
+model <- lm(Profit ~ ., data = data)
+vif_values <- vif(model)
+print(vif_values)
+```
+
+## Modeling
+
+```{r}
+set.seed(123) 
+train_index <- createDataPartition(data$Profit, p = 0.8, list = FALSE)
+
+train_set <- data[train_index, ]
+test_set <- data[-train_index, ]
+
+```
+
+```{r}
+set.seed(123)
+
+cl <- makeCluster(detectCores() - 1)
+registerDoParallel(cl)
+
+ctrl_tune <- trainControl(method = "repeatedcv", 
+                          number = 3, repeats = 1,
+                          allowParallel = TRUE, 
+                          returnResamp = "all", 
+                          savePredictions = "all")
+```
+
+Tune Grid
+
+```{r}
+tune_grid <- expand.grid(
+  C = c(0.1, 1, 5, 10, 20, 50),   
+  sigma = c(0.01, 0.05, 0.1, 0.2, 0.5, 1)
+)
+
+```
+
+Training the model
+
+```{r}
+tuned_svm_model <- train(Profit ~ ., 
+                         data = train_set,
+                         method = "svmRadial",
+                         trControl = ctrl_tune,
+                         tuneGrid = tune_grid,
+                         metric = "Rsquared")
+
+stopCluster(cl)
+registerDoSEQ()
+```
+
+Visualizing results
+
+```{r}
+print(tuned_svm_model$results)
+
+print(tuned_svm_model$resample)
+```
+
+Best Model
+
+```{r}
+best_svm_model <- tuned_svm_model$bestTune
+print(best_svm_model)
+```
+
+Variable Interpretation
+```{r}
+var_imp_selected <- varImp(tuned_svm_model, scale = FALSE)
+
+var_imp_selected_df <- as.data.frame(var_imp_selected$importance)
+var_imp_selected_df$Variable <- rownames(var_imp_selected_df)
+var_imp_selected_df <- var_imp_selected_df[order(-var_imp_selected_df$Overall), ]
+
+top_var_imp_selected_df <- var_imp_selected_df[1:15, ]
+
+
+ggplot(top_var_imp_selected_df, aes(x = reorder(Variable, Overall), y = Overall, color = Overall, group = 1)) +
+    geom_point(size = 3) +
+    geom_segment(aes(x = reorder(Variable, Overall), 
+                     xend = reorder(Variable, Overall), 
+                     y = 0, 
+                     yend = Overall)) +
+    coord_flip() +
+    labs(title = "Top 15 most important variables",
+         x = NULL,
+         y = "Importance") +
+    scale_color_gradient(low = "#7fcdbb", high = "#253494", guide = "none") +
+    theme_minimal() +
+    theme(text = element_text(family = "Times New Roman", size = 11))
+```
+
+#### Prediction
+
+To test the model in unseen data and validate the results attained
+
+```{r}
+test_set$svm_predictions <- predict(tuned_svm_model, newdata = test_set)
+
+results_svm<- postResample(pred = test_set$svm_predictions, obs = test_set$Profit)
+print(results_svm)
+
+```
+
+```{r}
+ggplot(test_set, aes(x = svm_predictions, y = Profit)) +
+  geom_point(aes(color = Profit), size = 3) +
+  geom_abline(intercept = 0, slope = 1, colour = "black") +
+  labs(title = "Support Vector Machine Observed vs Predicted", x = "Predicted", y = "Observed") +
+  scale_color_gradient(low = "#7fcdbb", high = "#253494", guide = "none") +
+  theme_minimal() +
+  theme(text = element_text(family = "Times New Roman", size = 11),
+        plot.title = element_text(hjust = 0.5))
+
+```
+```{r}
+# SVM Model Performance
+svm_predictions <- predict(tuned_svm_model, newdata = test_set)
+actuals <- test_set$Profit
+
+mse_svm <- mean((svm_predictions - actuals)^2)
+rmse_svm <- sqrt(mse_svm)
+mae_svm <- mean(abs(svm_predictions - actuals))
+r2_svm <- 1 - sum((svm_predictions - actuals)^2) / sum((actuals - mean(actuals))^2)
+
+cat("SVM Model Performance:\n")
+cat("Mean Squared Error (MSE):", mse_svm, "\n")
+cat("Root Mean Squared Error (RMSE):", rmse_svm, "\n")
+cat("Mean Absolute Error (MAE):", mae_svm, "\n")
+cat("R-squared (R2):", r2_svm, "\n")
+```
+The model has too little data, it its not good at predicting the dependent variable, the R square explains little of the variability of our dependent variable.
