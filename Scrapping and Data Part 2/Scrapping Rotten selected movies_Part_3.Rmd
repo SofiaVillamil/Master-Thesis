@@ -96,7 +96,7 @@ generate_movie_url <- function(movie_title, release_year = NULL, known_variation
     return(base_url)
   }
   
-  # Check URLs with appended years as some URL's have the year as suffix
+  # URLs with appended years as some URL's have the year as suffix
   years <- 2010:2024
   possible_urls <- paste0(base_url, "_", years)
   valid_urls <- possible_urls[sapply(possible_urls, is_url_valid)]
@@ -108,7 +108,7 @@ generate_movie_url <- function(movie_title, release_year = NULL, known_variation
   return(NA)
 }
 
-# Function to save intermediate results to a CSV file. To have a backup
+# Function to save intermediate results to a CSV file. To have a backup.
 save_results <- function(data, file_path) {
   write.csv(data, file_path, row.names = FALSE)
 }
@@ -151,7 +151,6 @@ save_results(results2, file_path)
 #### Scrapping the data
 
 ```{r}
-# Function to extract single text 
 extract_single_text <- function(node) {
   if (length(node) == 0) return(NA)
   html_text(node, trim = TRUE)
@@ -233,7 +232,7 @@ movies_data <- test %>%
 combined_data <- bind_rows(movies_data$movie_data)
 
 # Save the combined data to a CSV file to have a back up
-write.csv(combined_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/scraped_movie_data.csv", row.names = FALSE)
+# write.csv(combined_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/scraped_movie_data.csv", row.names = FALSE)
 ```
 
 ### Joining the data attained with the final data set
