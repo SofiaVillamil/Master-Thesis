@@ -115,7 +115,7 @@ unique_awards_nominations2 <- actors_info %>%
   arrange(awards_and_nominations)
 ```
 
-Cleaning the column as the movies with no awards need to be cleaned to represent that.
+Cleaning the column as the movies with no awards need to be cleaned to represent that. 
 
 ```{r}
 actors_info <- actors_info %>%
