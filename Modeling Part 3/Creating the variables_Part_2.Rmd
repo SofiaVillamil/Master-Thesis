@@ -9,7 +9,7 @@ output: html_document
 
 ### Actor
 
-We need more variables to get a better rating for each actor, because I believe we need specific information about each actor not just for each movie. We are going to go back to scrapping IMDB using the same code but for an actor now.
+We need more variables to get a better rating for each actor, because I believe we need specific information about each actor not just for each movie. We are going to go back to scrapping IMDb using the same code but for an actor now.
 
 ```{r}
 rm(list = ls())
@@ -28,7 +28,7 @@ library(doParallel)
 ```
 
 ```{r}
-set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here
+set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36; Sofia Villamil / sofia.v1999@gmail.com")) # set your user agent here 
 ```
 
 ```{r message=FALSE}
@@ -38,6 +38,7 @@ data_final_6 <- data_final_6[, -1]
 ```
 
 Data set with the actors
+
 ```{r}
 actors <- data_final_6 %>% select(imdb_id,FirstActor_imdb, SecondActor_imdb)
 
@@ -50,7 +51,9 @@ nombres2 <- nombres2[!duplicated(nombres2$name), ]
 ```
 
 ### Getting the Id's
+
 We do not have the id's for the actors as we had for the movies, this is why we are going to implement something a little different. We will create a code to search the name and get the id from the first name it appears and then we save it.
+
 ```{r}
 nombres <- nombres2[1:10,] #Set the number of actors we want to scrap the id's 
 ```
@@ -100,13 +103,15 @@ stopCluster(cl)
 ```
 
 Set the number of actors we want to scrap
+
 ```{r}
 nombres3 <-nombres[1:10, ]
 ```
 
-### Starting the Scrapping 
+### Starting the Scrapping
 
 We have the id's so what we are going to do now is get the url and the variables that we want.
+
 ```{r}
 scrape_imdb_actor <- function(actor_id) {
   url <- paste0("https://www.imdb.com/name/", actor_id)
@@ -175,8 +180,3 @@ final_df_2 <- final_df[!duplicated(final_df$actor_id_imdb), ]
 ```
 
 We will continue to the next script called "Creating the variables_Part_3"
-
-
-
-
-
