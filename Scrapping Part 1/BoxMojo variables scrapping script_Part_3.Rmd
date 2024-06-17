@@ -1,5 +1,5 @@
 ---
-title: "Scrapping for BoxMojo"
+title: "Scrapping for Box Office Mojo"
 author: "Sofia Villamil"
 date: "2024-06-02"
 output: html_document
@@ -7,7 +7,7 @@ output: html_document
 
 ### BOX MOJO SCRAPPING
 
-We are going to scrap the website BoxMojo (Link: <https://www.boxofficemojo.com/>) in order to complement the data set with more variables that we could not found in the previous website.
+We are going to scrap the website Box Office Mojo (Link: <https://www.boxofficemojo.com/>) in order to complement the data set with more variables that we could not found in the previous website.
 
 ```{r}
 rm(list = ls())
@@ -20,6 +20,7 @@ library(rvest)
 library(dplyr)
 library(readr)
 library(future.apply) # parallel processing
+library(httr)
 ```
 
 ```{r}
@@ -106,12 +107,12 @@ scrape_boxofficemojo <- function(imdb_id, index) {
 movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test.csv",show_col_types = FALSE)
 
 # Example data set to try small number of movies then change to the data
-test_movies <- movies
+test_movies <- movies[1:10, ]
 
 scraped_data <- data.frame()
 
 # Use parallel processing for scraping
-plan(multisession, workers = 7) # Adjust the number of workers based on your CPU, I have 8 so I put one less
+plan(multisession, workers = 7) # Adjust the number of workers based on your CPU
 
 # Scrape data for each movie in the test data set
 scraped_data_list <- future_lapply(seq_len(nrow(test_movies)), function(i) {
