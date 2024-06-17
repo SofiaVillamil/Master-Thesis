@@ -17,20 +17,18 @@ rm(list = ls())
 library(dplyr)
 library(readr)
 library(car)
-library(ggplot2)
 library(reshape2)
 library(corrplot)
 library(caret)
 library(neuralnet)
-library(pdp) # For partial dependence plots
 library(doParallel)
 library(e1071)
 library(Boruta)
 library(extrafont)
 #font_import()
 #loadfonts(device = "win")
-library(stargazer)
-
+library(pdp)
+library(ggplot2)
 ```
 
 ```{r setup, include=FALSE}
@@ -361,6 +359,17 @@ best_model <- tuned_model$bestTune
 print(best_model)
 ```
 
+#### Prediction
+
+To test the model in unseen data and validate the results attained
+
+```{r}
+test_set$nn_predictions <- predict(tuned_model, newdata = test_set)
+
+results <- postResample(pred = test_set$nn_predictions, obs = test_set$Profit)
+print(results)
+
+```
 Variable Interpretation
 
 ```{r}
@@ -392,7 +401,20 @@ ggplot(top_var_imp_df, aes(x = reorder(Variable, Overall), y = Overall, color = 
 ```
 
 ```{r}
-# dependence plots
+partial_data_director <- partial(tuned_model, pred.var = "director_star_power", plot = FALSE)
+
+# dependence plot
+partial_plot_director <- ggplot(partial_data_director, aes(x = director_star_power, y = yhat)) +
+  geom_line(color = "#253494", linewidth = 1) +
+  labs(title = "Partial Dependence Plot",
+       x = "Director Star Power",
+       y = "Predicted Value") +
+  theme_minimal() +
+  theme(text = element_text(family = "Times New Roman", size = 11),
+        plot.title = element_text(hjust = 0.5))
+
+print(partial_plot_director)
+
 partial_data_movie <- partial(tuned_model, pred.var = "movie_rating", plot = FALSE)
 
 partial_plot_movie <- ggplot(partial_data_movie, aes(x = movie_rating, y = yhat)) +
@@ -405,32 +427,6 @@ partial_plot_movie <- ggplot(partial_data_movie, aes(x = movie_rating, y = yhat)
         plot.title = element_text(hjust = 0.5))
 
 print(partial_plot_movie)
-
-partial_data_director <- partial(tuned_model, pred.var = "director_star_power", plot = FALSE)
-
-partial_plot_director <- ggplot(partial_data_director, aes(x = director_star_power, y = yhat)) +
-  geom_line(color = "#253494", linewidth = 1) +
-  labs(title = "Partial Dependence Plot",
-       x = "Director Star Power",
-       y = "Predicted Value") +
-  theme_minimal() +
-  theme(text = element_text(family = "Times New Roman", size = 11),
-        plot.title = element_text(hjust = 0.5))
-
-print(partial_plot_director)
-
-```
-
-#### Prediction
-
-To test the model in unseen data and validate the results attained
-
-```{r}
-test_set$nn_predictions <- predict(tuned_model, newdata = test_set)
-
-results <- postResample(pred = test_set$nn_predictions, obs = test_set$Profit)
-print(results)
-
 ```
 
 ```{r}
@@ -443,7 +439,6 @@ ggplot(test_set, aes(x = nn_predictions, y = Profit)) +
   theme(text = element_text(family = "Times New Roman", size = 11),
         plot.title = element_text(hjust = 0.5))
 ```
-
 ### Artificial Neural Networks with feature selection
 
 ```{r}
@@ -596,8 +591,9 @@ Visualizing results
 
 ```{r}
 print(tuned_svm_model$results)
-
+plot(tuned_svm_model$results)
 print(tuned_svm_model$resample)
+plot(tuned_svm_model$resample)
 ```
 
 Best Model
@@ -605,6 +601,16 @@ Best Model
 ```{r}
 best_svm_model <- tuned_svm_model$bestTune
 print(best_svm_model)
+```
+
+#### Predicion
+Testing the model in unseen data and validating the results attained
+
+```{r}
+test_set$svm_predictions <- predict(tuned_svm_model, newdata = test_set)
+
+results_svm<- postResample(pred = test_set$svm_predictions, obs = test_set$Profit)
+print(results_svm)
 ```
 
 Variable Interpretation
@@ -625,13 +631,14 @@ ggplot(top_var_imp_selected_df, aes(x = reorder(Variable, Overall), y = Overall,
                      y = 0, 
                      yend = Overall)) +
     coord_flip() +
-    labs(title = "Top 15 most important variables",
+    labs(title = "Top 15 most important variables for the SVM model",
          x = NULL,
          y = "Importance") +
     scale_color_gradient(low = "#7fcdbb", high = "#253494", guide = "none") +
     theme_minimal() +
     theme(text = element_text(family = "Times New Roman", size = 11))
 ```
+
 
 ```{r}
 # partial dependence plot
@@ -662,19 +669,8 @@ partial_plot_movie_svm <- ggplot(partial_data_movie_svm, aes(x = movie_rating, y
 print(partial_plot_movie_svm)
 ```
 
-#### Predicion
-Testing the model in unseen data and validating the results attained
 
 ```{r}
-test_set$svm_predictions <- predict(tuned_svm_model, newdata = test_set)
-
-results_svm<- postResample(pred = test_set$svm_predictions, obs = test_set$Profit)
-print(results_svm)
-```
-
-
-```{r}
-
 ggplot(test_set, aes(x = svm_predictions, y = Profit)) +
   geom_point(aes(color = Profit), size = 3) +
   geom_abline(intercept = 0, slope = 1, colour = "black") +
@@ -746,18 +742,9 @@ cat("Root Mean Squared Error (RMSE):", rmse_ann, "\n")
 cat("Mean Absolute Error (MAE):", mae_ann, "\n")
 cat("R-squared (R2):", r2_ann, "\n")
 ```
-
 The ensemble model show the most promise.It has the lowest MSE, RMSE, and MAE, and the highest R-squared value, indicating that it performs better than both the SVM and ANN models in terms of prediction accuracy and explained variance.
 
-```{r}
-# Plot observed vs. predicted for the ensemble model
-test_set$ensemble_predictions <- ensemble_predictions
-ggplot(test_set, aes(x = ensemble_predictions, y = Profit)) +
-  geom_point() +
-  geom_abline(intercept = 0, slope = 1, colour = "blue") +
-  labs(title = "Ensemble Model Observed vs Predicted", x = "Predicted", y = "Observed") +
-  theme_minimal()
-```
+
 
 
 
