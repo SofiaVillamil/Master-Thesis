@@ -6,7 +6,7 @@ output: html_document
 ---
 ### First cleaning of the data
 
-We will start by cleaning a little of the data set so we can continue with the next part of the scrapping. In this script we will take some importan decisions of how we are going to deal with certain missing values and creating smaller data sets to be used for other scrapping scripts.
+We will start by cleaning a little of the data set so we can continue with the next part of the scrapping. In this script we will take some important decisions of how we are going to deal with certain missing values and creating smaller data sets to be used for other scrapping scripts.
 
 ```{r}
 rm(list = ls())
@@ -51,7 +51,8 @@ data$GrossWorldwide_imdb  <- as.numeric(gsub("[\\$,]", "", data$GrossWorldwide_i
 ```
 
 ```{r}
-# We are going to create a new variable with both taking the bigger gross from each
+# We are going to create a new variable taking the bigger gross from each variable
+
 data$world_wide_gross <- pmax(data$GrossWorldwide_imdb, data$WorldwideGross_bm, na.rm = TRUE)
 
 # if both are NA's
