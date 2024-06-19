@@ -31,7 +31,7 @@ set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537
 ```
 
 ```{r}
-data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final.csv", show_col_types = FALSE)
+data <- read_csv("data_final.csv", show_col_types = FALSE)
 
 ```
 
