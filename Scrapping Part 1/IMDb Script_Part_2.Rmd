@@ -115,7 +115,7 @@ scrape_imdb <- function(imdb_id, index) {
 }
  
 # 1 million movie data set from keggel that is already filtered form previous script
-movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping Part 1/TMDB_movie_dataset_v11_1mill_filter.csv", show_col_types = FALSE)
+movies <- read_csv("TMDB_movie_dataset_v11_1mill_filter.csv", show_col_types = FALSE)
  
 movies <- movies %>%
   group_by(title) %>%
@@ -150,8 +150,10 @@ scraped_data <- scraped_data %>%
 # Merge the scraped data with your existing test dataset
 final_data <- left_join(test_movies, scraped_data, by = "imdb_id")
 
+write.csv(final_data, "data_1.csv", row.names = FALSE)
+
 # Save the final merged dataset
-#write.csv(final_data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test.csv", row.names = FALSE)
+#write.csv(final_data, "/Scrapping and Data Part 2/movies_final_dataset_test.csv", row.names = FALSE)
 
 ```
 
