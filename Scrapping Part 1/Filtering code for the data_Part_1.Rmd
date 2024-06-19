@@ -16,20 +16,26 @@ rm(list = ls())
 ```{r}
 library(readr)
 library(dplyr)
+library(lubridate)
 
-movies <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping Part 1/TMDB_movie_dataset_v11_1mill.csv", 
-    delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
+movies <- read_delim("TMDB_movie_dataset_v11.csv", 
+    delim = ",", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE) #put the correct path for the kaggel data.
 
-# Some columns with NA's where generated
 movies_cleaned <- movies %>%
-  select(where(~ !all(is.na(.))))
+  mutate(year = year(release_date))
 
 # filtering for the years I want in the data set
 filtered_movies <- movies_cleaned %>%
   filter(year > 2011 & year < 2024)
 
-# Save the filtered dataset to a CSV file
-write.csv(filtered_movies, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping Part 1/TMDB_movie_dataset_v11_1mill_filter.csv", row.names = FALSE)
+# Some columns with NA's where generated
+filtered_movies <- filtered_movies %>%
+  select(where(~ !all(is.na(.))))
+
+filtered_movies$release_date <- as.character(filtered_movies$release_date)
+
+# Save the filtered data set to a CSV file
+write.csv(filtered_movies, "TMDB_movie_dataset_v11_1mill_filter.csv", row.names = FALSE)
 
 ```
 
