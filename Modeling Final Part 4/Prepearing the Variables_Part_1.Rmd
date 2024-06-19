@@ -27,14 +27,14 @@ library(readxl)
 ```
 
 ```{r message=FALSE}
-data_final_6 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_6.csv",show_col_types = FALSE)
+data_final_6 <- read_csv("data_final_6.csv",show_col_types = FALSE)
 data_final_6 <- data_final_6[, -1]
 ```
 
 ### Actor
 
 ```{r message=FALSE}
-actors_info <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/actors_with_imdb.csv", 
+actors_info <- read_delim("actors_with_imdb.csv", 
     delim = ",", escape_double = FALSE, trim_ws = TRUE)
 ```
 
