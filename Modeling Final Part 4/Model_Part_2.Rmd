@@ -32,7 +32,7 @@ library(ggplot2)
 ```
 
 ```{r setup, include=FALSE}
-data_final_8 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Final Part 4/data_final_7.csv")
+data_final_8 <- read_csv("data_final_7.csv")
 ```
 
 
