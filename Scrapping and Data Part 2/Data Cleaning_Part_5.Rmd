@@ -24,7 +24,7 @@ library(openxlsx)
 ```
 
 ```{r}
-data <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_3.csv", show_col_types = FALSE)
+data <- read_csv("data_final_3.csv", show_col_types = FALSE)
 
 ```
 
