@@ -20,7 +20,7 @@ library(genderdata)
 ```
 
 ```{r}
-data <- read_csv("Scrapping Part 1/data_3.csv", 
+data <- read_csv("movies_test_dataset_with_rotten_tomatoes_cleaned.csv", 
     col_types = cols(release_date = col_character(), 
         MPAA_imdb = col_character()))
 ```
@@ -416,8 +416,6 @@ data$lead_is_woman <- sapply(data$FirstActor_imdb, map_gender, gender_map = gend
 
 
 ```{r}
-write.csv(data,"data_1.csv", row.names = FALSE)
-
 #write.csv(data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_2.csv", row.names = FALSE)
 ```
 
