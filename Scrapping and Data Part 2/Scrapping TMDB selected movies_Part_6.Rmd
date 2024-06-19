@@ -209,7 +209,7 @@ for(i in 1:nrow(chunck)) {
 
 ### Saving
 ```{r}
-#write.csv(data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv",row.names = FALSE)
+#write.csv(data, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_5.csv",row.names = FALSE)
 
 ```
 
