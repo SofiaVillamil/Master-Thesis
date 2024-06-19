@@ -104,7 +104,7 @@ scrape_boxofficemojo <- function(imdb_id, index) {
 
 ```{r}
 # Load data
-movies <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test.csv",show_col_types = FALSE)
+movies <- read_csv("data_1.csv",show_col_types = FALSE)
 
 # Example data set to try small number of movies then change to the data
 test_movies <- movies[1:10, ]
@@ -149,6 +149,8 @@ df_cleaned <- final_data %>%
 ```
 
 ```{r}
+write.csv(df_cleaned, "data_2.csv", row.names = FALSE)
+
 #write.csv(df_cleaned, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/movies_final_dataset_test_with_bm_cleaned.csv", row.names = FALSE)
 ```
 
