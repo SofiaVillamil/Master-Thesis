@@ -43,12 +43,12 @@ library(ggplot2)
 ### Creating the variables for this small data set
 
 ```{r message=FALSE}
-data_final_5 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv", show_col_types = FALSE)
+data_final_5 <- read_csv("data_final_5.csv", show_col_types = FALSE)
 ```
 
 ### Youtube Variable
 ```{r message=FALSE}
-results_youtube_1 <- read_delim("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/Youtube and Instagram Data/results_youtube_1.csv", 
+results_youtube_1 <- read_delim("results_youtube_1.csv", 
     delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
 results_youtube_1 <- results_youtube_1[, -3]
 
@@ -92,7 +92,7 @@ data_final_5 <- merge(data_final_5, results_youtube_1, by = "title", all.x = TRU
 ### Instagram Variable
 
 ```{r}
-results_instagram_1 <- read_excel("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/Youtube and Instagram Data/results_instagram_1.xlsx")
+results_instagram_1 <- read_excel("results_instagram_1.xlsx")
 results_instagram_1$Instagram_followers <-results_instagram_1$`Instagram Followers`
 results_instagram_1 <- results_instagram_1[, -2]
 
