@@ -27,7 +27,7 @@ library(stringr)
 ```
 
 ```{r}
-data_final_4 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_4.csv",show_col_types = FALSE)
+data_final_4 <- read_csv("data_final_4.csv",show_col_types = FALSE)
 ```
 
 ```{r}
