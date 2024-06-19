@@ -19,7 +19,7 @@ library(openxlsx)
 
 
 ```{r message = FALSE}
-data_final_6 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_6.csv", show_col_types = FALSE)
+data_final_6 <- read_csv("data_final_6.csv", show_col_types = FALSE)
 
 ```
 
@@ -36,7 +36,7 @@ movies2 <- data_final_6 %>% select(imdb_id, title)
 ### Data set samples for Scrapping in Instagram with python script
 
 ```{r}
-data_filtered <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/actors_with_imdb.csv", show_col_types = FALSE)
+data_filtered <- read_csv("actors_with_imdb.csv", show_col_types = FALSE)
 ```
 
 

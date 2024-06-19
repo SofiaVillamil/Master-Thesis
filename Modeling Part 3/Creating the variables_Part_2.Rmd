@@ -32,7 +32,7 @@ set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537
 ```
 
 ```{r message=FALSE}
-data_final_6 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/data_final_6.csv", show_col_types = FALSE)
+data_final_6 <- read_csv("data_final_6.csv", show_col_types = FALSE)
 data_final_6 <- data_final_6[, -1]
 
 ```
