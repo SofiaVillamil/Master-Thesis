@@ -32,7 +32,7 @@ set_config(user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537
 This is the data set attained in the previous code for the URL's that were not found.
 
 ```{r}
-data1 <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_na_titles.csv", show_col_types = FALSE)
+data1 <- read_csv("data_na_titles.csv", show_col_types = FALSE)
 ```
 
 ```{r}
