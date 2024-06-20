@@ -173,7 +173,7 @@ final_df <- nombres3 %>%
 ```
 
 ```{r}
-final_df_2 <- final_df[!duplicated(final_df$actor_id_imdb), ]
+nuevo <- final_df[!duplicated(final_df$actor_id_imdb), ]
 
 #write.csv(nuevo, "C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Modeling Part 3/actors_with_imdb.csv", row.names = FALSE)
 
