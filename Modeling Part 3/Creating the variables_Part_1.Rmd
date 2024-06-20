@@ -24,7 +24,7 @@ library(tidyr)
 ```
 
 ```{r}
-data_final <- read_csv("C:/Users/sofia/Documents/Documentos/Master Computational Social Sciences/TFM/Master Thesis/Scrapping and Data Part 2/data_final_5.csv", show_col_types = FALSE)
+data_final <- read_csv("data_final_5.csv", show_col_types = FALSE)
 
 data_final <- data_final %>%
   select(-title_rt,-title_scraped,-MovieID)
