@@ -88,7 +88,7 @@ get_movie_id <- function(title, api_key) {
   return(NA)
 }
 
-api_key <- "872bd1f42ef7f3f20979f4644b28655e" # Replace with your TMDB API key
+api_key <- " " # Replace with your TMDB API key
 
 
 # there is a row that is problematic and does not give the correct id and it has no info on budget so we eliminate it.
