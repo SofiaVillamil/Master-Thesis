@@ -7,7 +7,7 @@ This is the complete guide to learning how to follow the order of the scripts, r
 
 Okay! So let's start. 
 
-1. Once the zip is downloaded, open the project that is set up in it. It's called Master Project - main.
+1. Once the zip is downloaded, open the project that is set up in it. It's called "Master Thesis".
 
 2. The first folder you need to start with is the folder called "Scraping Part 1." In there, you will identify the first script you need to run, which is called "Filtering code for the data_Part_1." This code is only to attain the base dataset. You will need to follow the instructions in that script, getting the data from the link given, and then running the script with the correct path to where the dataset collected from Kaggle is. The code is set to save the filtered file in order to use it for the next script.
 
