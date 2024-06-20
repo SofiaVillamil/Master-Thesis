@@ -13,7 +13,7 @@ rm(list = ls())
 
 #### Library
 
-```{r setup, include=FALSE}
+```{r message=FALSE}
 library(dplyr)
 library(readr)
 library(car)
@@ -31,7 +31,7 @@ library(pdp)
 library(ggplot2)
 ```
 
-```{r setup, include=FALSE}
+```{r message=FALSE}
 data_final_8 <- read_csv("data_final_7.csv")
 ```
 
